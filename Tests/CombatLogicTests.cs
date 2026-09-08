@@ -1,4 +1,5 @@
 using Godot;
+using GodotGameTemplate.Combat;
 using GodotGameTemplate.Core;
 using Xunit;
 
@@ -58,5 +59,93 @@ public class InputCommandBufferTests
         buf.Push(Cmd(InputCommandKind.Attack), 0);
         buf.Clear();
         Assert.False(buf.TryConsume(InputCommandKind.Attack, 10, out _));
+    }
+}
+
+public class MeleeComboTrackerTests
+{
+    private static readonly ComboStageData[] Stages =
+    {
+        new() { Startup = 0.10f, Active = 0.12f, Recovery = 0.30f, CancelAfter = 0.10f },
+        new() { Startup = 0.10f, Active = 0.12f, Recovery = 0.32f, CancelAfter = 0.10f },
+        new() { Startup = 0.14f, Active = 0.16f, Recovery = 0.55f, CancelAfter = 0.25f },
+    };
+
+    private static MeleeComboTracker NewTracker() => new(Stages);
+
+    [Fact]
+    public void StartsInactive_AdvanceEntersStage0Startup()
+    {
+        var t = NewTracker();
+        Assert.False(t.IsActive);
+        Assert.True(t.TryAdvance());
+        Assert.Equal(0, t.StageIndex);
+        Assert.Equal(ComboStagePhase.Startup, t.Phase);
+    }
+
+    [Fact]
+    public void Tick_AdvancesStartupToActiveToRecovery()
+    {
+        var t = NewTracker();
+        t.TryAdvance();
+        t.Tick(0.10f);
+        Assert.Equal(ComboStagePhase.Active, t.Phase);
+        t.Tick(0.12f);
+        Assert.Equal(ComboStagePhase.Recovery, t.Phase);
+        t.Tick(0.30f);
+        Assert.False(t.IsActive);
+    }
+
+    [Fact]
+    public void HitWindow_CanBeConsumedOnlyOncePerStage()
+    {
+        var t = NewTracker();
+        t.TryAdvance();
+        t.Tick(0.05f); // Startup 中段
+        Assert.False(t.CanApplyHit);
+        t.Tick(0.05f); // 进入 Active
+        Assert.True(t.CanApplyHit);
+        Assert.True(t.ConsumeHit());
+        Assert.False(t.ConsumeHit());
+    }
+
+    [Fact]
+    public void Chain_BlockedBeforeCancelAfter_AfterItAllowed()
+    {
+        var t = NewTracker();
+        t.TryAdvance();
+        t.Tick(0.10f + 0.12f + 0.05f); // Recovery 0.05s < CancelAfter 0.10s
+        Assert.False(t.TryAdvance());
+        t.Tick(0.06f); // 0.11s ≥ CancelAfter
+        Assert.True(t.IsInCancelWindow);
+        Assert.True(t.TryAdvance());
+        Assert.Equal(1, t.StageIndex);
+    }
+
+    [Fact]
+    public void Finisher_ChainsBackToStage0()
+    {
+        var t = NewTracker();
+        t.TryAdvance(); // -> 0
+        t.Tick(Stages[0].Startup + Stages[0].Active + Stages[0].CancelAfter + 0.01f);
+        t.TryAdvance(); // -> 1
+        t.Tick(Stages[1].Startup + Stages[1].Active + Stages[1].CancelAfter + 0.01f);
+        t.TryAdvance(); // -> 2 (finisher)
+        Assert.Equal(2, t.StageIndex);
+        t.Tick(Stages[2].Startup + Stages[2].Active + Stages[2].CancelAfter + 0.01f);
+        t.TryAdvance(); // 末段之后回到第 1 段
+        Assert.Equal(0, t.StageIndex);
+    }
+
+    [Fact]
+    public void Reset_InterruptsCombo()
+    {
+        var t = NewTracker();
+        t.TryAdvance();
+        t.Tick(0.05f);
+        t.Reset();
+        Assert.False(t.IsActive);
+        Assert.True(t.TryAdvance());
+        Assert.Equal(0, t.StageIndex);
     }
 }
