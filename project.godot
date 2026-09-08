@@ -10,9 +10,9 @@ config_version=5
 
 [application]
 
-config/name="Godot Game Template"
-config/description="A minimal Godot 4 C# template repository for new game projects."
-config/features=PackedStringArray("4.2", "C#")
+config/name="First Person Action"
+config/description="第一人称战术阵型战斗"
+config/features=PackedStringArray("4.6", "C#")
 config/icon="res://icon.svg"
 
 [dotnet]
