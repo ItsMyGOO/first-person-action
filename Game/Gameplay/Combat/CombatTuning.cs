@@ -11,29 +11,50 @@ public static class CombatTuning
     {
         new()
         {
-            Startup = 0.10f, Active = 0.12f, Recovery = 0.30f,
-            HitFrom = 0.00f, HitTo = 0.12f,
-            Damage = 10f, PoiseDamage = 20f, ForwardStep = 0.6f, CancelAfter = 0.10f, Knockback = 2.0f,
+            Startup = 0.10f,
+            Active = 0.12f,
+            Recovery = 0.30f,
+            HitFrom = 0.00f,
+            HitTo = 0.12f,
+            Damage = 10f,
+            PoiseDamage = 20f,
+            ForwardStep = 0.6f,
+            CancelAfter = 0.10f,
+            Knockback = 2.0f,
         },
         new()
         {
-            Startup = 0.10f, Active = 0.12f, Recovery = 0.32f,
-            HitFrom = 0.00f, HitTo = 0.12f,
-            Damage = 12f, PoiseDamage = 25f, ForwardStep = 0.7f, CancelAfter = 0.10f, Knockback = 2.5f,
+            Startup = 0.10f,
+            Active = 0.12f,
+            Recovery = 0.32f,
+            HitFrom = 0.00f,
+            HitTo = 0.12f,
+            Damage = 12f,
+            PoiseDamage = 25f,
+            ForwardStep = 0.7f,
+            CancelAfter = 0.10f,
+            Knockback = 2.5f,
         },
         new()
         {
-            Startup = 0.14f, Active = 0.16f, Recovery = 0.55f,
-            HitFrom = 0.00f, HitTo = 0.16f,
-            Damage = 22f, PoiseDamage = 55f, ForwardStep = 0.9f, CancelAfter = 0.25f, Knockback = 5.0f,
+            Startup = 0.14f,
+            Active = 0.16f,
+            Recovery = 0.55f,
+            HitFrom = 0.00f,
+            HitTo = 0.16f,
+            Damage = 22f,
+            PoiseDamage = 55f,
+            ForwardStep = 0.9f,
+            CancelAfter = 0.25f,
+            Knockback = 5.0f,
         },
     };
 
     public const string TargetGroup = "combat_targets";
-    public const float AttackRange = 2.2f;          // 近战判定距离
-    public const float AttackHalfAngleDeg = 55f;    // 前方锥形半角
-    public const float AttackMoveScale = 0.15f;     // 攻击期间移动输入衰减
-    public const int HitstopMs = 70;                // 命中顿帧（毫秒）
+    public const float AttackRange = 2.2f; // 近战判定距离
+    public const float AttackHalfAngleDeg = 55f; // 前方锥形半角
+    public const float AttackMoveScale = 0.15f; // 攻击期间移动输入衰减
+    public const int HitstopMs = 70; // 命中顿帧（毫秒）
 
     // —— 移动 ——
     public const float WalkSpeed = 5.0f;

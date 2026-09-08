@@ -41,7 +41,8 @@ public static class MeleeArcQuery
         float halfAngleDeg,
         IList<T> targets,
         Func<T, Vector3> centerOf,
-        float heightTolerance = DefaultHeightTolerance)
+        float heightTolerance = DefaultHeightTolerance
+    )
         where T : class
     {
         var results = new List<T>();
@@ -62,7 +63,9 @@ public static class MeleeArcQuery
                 continue;
             }
 
-            float angleDeg = Mathf.RadToDeg(Mathf.Abs(forward.SignedAngleTo(flat.Normalized(), Vector3.Up)));
+            float angleDeg = Mathf.RadToDeg(
+                Mathf.Abs(forward.SignedAngleTo(flat.Normalized(), Vector3.Up))
+            );
             if (angleDeg <= halfAngleDeg)
             {
                 results.Add(target);

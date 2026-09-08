@@ -6,12 +6,12 @@ namespace GodotGameTemplate.Core;
 public enum InputCommandKind : byte
 {
     None = 0,
-    Move,       // 连续移动意图（Axis 为朝向）；不进缓冲，每帧即时生效
+    Move, // 连续移动意图（Axis 为朝向）；不进缓冲，每帧即时生效
     Attack,
     Dodge,
     Jump,
-    Execute,    // M4 处决
-    Skill1,     // M3 技能框架
+    Execute, // M4 处决
+    Skill1, // M3 技能框架
     Skill2,
     Skill3,
 }

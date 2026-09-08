@@ -67,9 +67,27 @@ public class MeleeComboTrackerTests
 {
     private static readonly ComboStageData[] Stages =
     {
-        new() { Startup = 0.10f, Active = 0.12f, Recovery = 0.30f, CancelAfter = 0.10f },
-        new() { Startup = 0.10f, Active = 0.12f, Recovery = 0.32f, CancelAfter = 0.10f },
-        new() { Startup = 0.14f, Active = 0.16f, Recovery = 0.55f, CancelAfter = 0.25f },
+        new()
+        {
+            Startup = 0.10f,
+            Active = 0.12f,
+            Recovery = 0.30f,
+            CancelAfter = 0.10f,
+        },
+        new()
+        {
+            Startup = 0.10f,
+            Active = 0.12f,
+            Recovery = 0.32f,
+            CancelAfter = 0.10f,
+        },
+        new()
+        {
+            Startup = 0.14f,
+            Active = 0.16f,
+            Recovery = 0.55f,
+            CancelAfter = 0.25f,
+        },
     };
 
     private static MeleeComboTracker NewTracker() => new(Stages);
@@ -163,7 +181,13 @@ public class MeleeArcQueryTests
     {
         var targets = new List<Target> { new() { Pos = new Vector3(0, 1, -2) } };
         List<Target> hits = MeleeArcQuery.FindHits(
-            Vector3.Zero, new Vector3(0, 0, -1), 2.5f, 55f, targets, t => t.Pos);
+            Vector3.Zero,
+            new Vector3(0, 0, -1),
+            2.5f,
+            55f,
+            targets,
+            t => t.Pos
+        );
         Assert.Single(hits);
     }
 
@@ -172,7 +196,13 @@ public class MeleeArcQueryTests
     {
         var targets = new List<Target> { new() { Pos = new Vector3(0, 1, 2) } };
         List<Target> hits = MeleeArcQuery.FindHits(
-            Vector3.Zero, new Vector3(0, 0, -1), 2.5f, 55f, targets, t => t.Pos);
+            Vector3.Zero,
+            new Vector3(0, 0, -1),
+            2.5f,
+            55f,
+            targets,
+            t => t.Pos
+        );
         Assert.Empty(hits);
     }
 
@@ -181,7 +211,13 @@ public class MeleeArcQueryTests
     {
         var targets = new List<Target> { new() { Pos = new Vector3(0, 1, -3) } };
         List<Target> hits = MeleeArcQuery.FindHits(
-            Vector3.Zero, new Vector3(0, 0, -1), 2.5f, 55f, targets, t => t.Pos);
+            Vector3.Zero,
+            new Vector3(0, 0, -1),
+            2.5f,
+            55f,
+            targets,
+            t => t.Pos
+        );
         Assert.Empty(hits);
     }
 
@@ -191,7 +227,13 @@ public class MeleeArcQueryTests
         // 距离 2、正侧方 = 90° 夹角 > 55° 半角
         var targets = new List<Target> { new() { Pos = new Vector3(2, 1, 0) } };
         List<Target> hits = MeleeArcQuery.FindHits(
-            Vector3.Zero, new Vector3(0, 0, -1), 2.5f, 55f, targets, t => t.Pos);
+            Vector3.Zero,
+            new Vector3(0, 0, -1),
+            2.5f,
+            55f,
+            targets,
+            t => t.Pos
+        );
         Assert.Empty(hits);
     }
 
@@ -200,7 +242,13 @@ public class MeleeArcQueryTests
     {
         var targets = new List<Target> { new() { Pos = new Vector3(0, 5, -2) } };
         List<Target> hits = MeleeArcQuery.FindHits(
-            Vector3.Zero, new Vector3(0, 0, -1), 2.5f, 55f, targets, t => t.Pos);
+            Vector3.Zero,
+            new Vector3(0, 0, -1),
+            2.5f,
+            55f,
+            targets,
+            t => t.Pos
+        );
         Assert.Empty(hits);
     }
 }

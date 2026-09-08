@@ -25,7 +25,9 @@ public partial class CombatSmokeTestRunner : Node
 
         Combat.Player player = main.GetNode<Combat.Player>("Player");
         Combat.DummyEnemy dummy = main.GetNode<Combat.DummyEnemy>("Dummy1");
-        Combat.HealthComponent dummyHealth = main.GetNode<Combat.HealthComponent>("Dummy1/HealthComponent");
+        Combat.HealthComponent dummyHealth = main.GetNode<Combat.HealthComponent>(
+            "Dummy1/HealthComponent"
+        );
 
         // 摆位：玩家在木桩南面 1.5m，默认朝向 -Z 正对木桩
         player.GlobalPosition = dummy.GlobalPosition + new Vector3(0, 0.2f, 1.5f);
@@ -34,7 +36,9 @@ public partial class CombatSmokeTestRunner : Node
         float hpBefore = dummyHealth.CurrentHealth;
 
         // 注入攻击按下事件，走完整输入管线（_UnhandledInput → 缓冲 → 连段 → 判定）
-        Input.ParseInputEvent(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = true });
+        Input.ParseInputEvent(
+            new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = true }
+        );
 
         for (int i = 0; i < 90; i++)
         {
@@ -56,7 +60,9 @@ public partial class CombatSmokeTestRunner : Node
         // 连段链：继续注入两次攻击，应推进到第 3 段（快速连点节奏下）
         for (int attack = 0; attack < 2; attack++)
         {
-            Input.ParseInputEvent(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = true });
+            Input.ParseInputEvent(
+                new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = true }
+            );
             for (int i = 0; i < 12; i++)
             {
                 await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);

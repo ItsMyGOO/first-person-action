@@ -25,7 +25,9 @@ public partial class HitstopManager : Node
         int token = ++_token;
         Engine.TimeScale = SlowTimeScale;
         // ignoreTimeScale=true 的计时器负责恢复（否则自身也被放慢、永远不会到时）
-        SceneTreeTimer timer = _instance.GetTree().CreateTimer(durationMs / 1000.0, true, false, true);
+        SceneTreeTimer timer = _instance
+            .GetTree()
+            .CreateTimer(durationMs / 1000.0, true, false, true);
         timer.Timeout += () =>
         {
             if (token == _token)

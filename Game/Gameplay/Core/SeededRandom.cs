@@ -15,7 +15,8 @@ public sealed class SeededRandom
     public void Reseed(int seed) => _random = new Random(seed);
 
     /// <summary>[minInclusive, maxExclusive)</summary>
-    public int NextInt(int minInclusive, int maxExclusive) => _random.Next(minInclusive, maxExclusive);
+    public int NextInt(int minInclusive, int maxExclusive) =>
+        _random.Next(minInclusive, maxExclusive);
 
     /// <summary>[0.0, 1.0)</summary>
     public double NextDouble() => _random.NextDouble();

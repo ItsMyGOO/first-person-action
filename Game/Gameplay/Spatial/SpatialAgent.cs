@@ -9,11 +9,20 @@ namespace GodotGameTemplate.Spatial;
 /// </summary>
 public partial class SpatialAgent : Node
 {
-    [Export] public float Radius = 0.5f;
-    [Export] public float GameplayMass = 100f;
-    [Export] public float PushResistance = 100f;
-    [Export] public float MovementForce = 100f;
-    [Export] public int CollisionPriority;
+    [Export]
+    public float Radius = 0.5f;
+
+    [Export]
+    public float GameplayMass = 100f;
+
+    [Export]
+    public float PushResistance = 100f;
+
+    [Export]
+    public float MovementForce = 100f;
+
+    [Export]
+    public int CollisionPriority;
 
     /// <summary>运行时标志：穿人/处决等期间对本单位豁免空间约束。</summary>
     public bool SpatialExempt;

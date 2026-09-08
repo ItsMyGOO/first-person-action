@@ -11,7 +11,8 @@ namespace GodotGameTemplate.Combat;
 /// </summary>
 public partial class Player : CharacterBody3D
 {
-    [Export] public float MouseSensitivity = CombatTuning.MouseSensitivity;
+    [Export]
+    public float MouseSensitivity = CombatTuning.MouseSensitivity;
 
     private Node3D _head = null!;
     private MeshInstance3D _viewArm = null!;
@@ -29,8 +30,7 @@ public partial class Player : CharacterBody3D
 
     public bool IsAttacking => _combo.IsActive;
 
-    public bool IsInvulnerable =>
-        _dodging && _dodgeElapsed < CombatTuning.DodgeInvulnerableSeconds;
+    public bool IsInvulnerable => _dodging && _dodgeElapsed < CombatTuning.DodgeInvulnerableSeconds;
 
     public override void _Ready()
     {
@@ -44,13 +44,17 @@ public partial class Player : CharacterBody3D
 
     public override void _UnhandledInput(InputEvent @event)
     {
-        if (@event is InputEventMouseMotion motion && Input.MouseMode == Input.MouseModeEnum.Captured)
+        if (
+            @event is InputEventMouseMotion motion
+            && Input.MouseMode == Input.MouseModeEnum.Captured
+        )
         {
             _yaw -= motion.Relative.X * MouseSensitivity;
             _pitch = Mathf.Clamp(
                 _pitch - motion.Relative.Y * MouseSensitivity,
                 -Mathf.DegToRad(CombatTuning.PitchClampDeg),
-                Mathf.DegToRad(CombatTuning.PitchClampDeg));
+                Mathf.DegToRad(CombatTuning.PitchClampDeg)
+            );
         }
         else if (@event.IsActionPressed("ui_cancel"))
         {
@@ -126,8 +130,13 @@ public partial class Player : CharacterBody3D
         Vector3 forward = ForwardFlat();
         List<ICombatTarget> targets = FindTargets();
         List<ICombatTarget> hits = MeleeArcQuery.FindHits(
-            GlobalPosition, forward, CombatTuning.AttackRange,
-            CombatTuning.AttackHalfAngleDeg, targets, t => t.Center);
+            GlobalPosition,
+            forward,
+            CombatTuning.AttackRange,
+            CombatTuning.AttackHalfAngleDeg,
+            targets,
+            t => t.Center
+        );
 
         if (hits.Count == 0)
         {
@@ -136,13 +145,15 @@ public partial class Player : CharacterBody3D
 
         foreach (ICombatTarget target in hits)
         {
-            target.ApplyHit(new HitData
-            {
-                Damage = stage.Damage,
-                PoiseDamage = stage.PoiseDamage,
-                Knockback = forward * stage.Knockback + Vector3.Up * 0.5f,
-                Source = EntityId.None, // 联机时填玩家 NetworkId
-            });
+            target.ApplyHit(
+                new HitData
+                {
+                    Damage = stage.Damage,
+                    PoiseDamage = stage.PoiseDamage,
+                    Knockback = forward * stage.Knockback + Vector3.Up * 0.5f,
+                    Source = EntityId.None, // 联机时填玩家 NetworkId
+                }
+            );
         }
 
         if (_combo.ConsumeHit())
@@ -170,9 +181,10 @@ public partial class Player : CharacterBody3D
         _dodging = true;
         _dodgeElapsed = 0f;
         Vector2 axis = Input.GetVector("move_left", "move_right", "move_forward", "move_back");
-        _dodgeDirection = axis.LengthSquared() > 0.01f
-            ? (GlobalTransform.Basis * new Vector3(axis.X, 0f, axis.Y)).Normalized()
-            : ForwardFlat();
+        _dodgeDirection =
+            axis.LengthSquared() > 0.01f
+                ? (GlobalTransform.Basis * new Vector3(axis.X, 0f, axis.Y)).Normalized()
+                : ForwardFlat();
         _combo.Reset(); // 闪避打断连段（取消规则的第一个成员）
     }
 
@@ -208,7 +220,8 @@ public partial class Player : CharacterBody3D
         else
         {
             target = wish * CombatTuning.WalkSpeed;
-            float accel = wish.LengthSquared() > 0.01f ? CombatTuning.GroundAccel : CombatTuning.GroundDecel;
+            float accel =
+                wish.LengthSquared() > 0.01f ? CombatTuning.GroundAccel : CombatTuning.GroundDecel;
             horizontal = horizontal.MoveToward(target, accel * dt);
         }
 

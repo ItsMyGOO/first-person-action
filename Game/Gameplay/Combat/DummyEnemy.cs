@@ -31,7 +31,11 @@ public partial class DummyEnemy : CharacterBody3D, ICombatTarget
     {
         _health = GetNode<HealthComponent>("HealthComponent");
         _mesh = GetNode<MeshInstance3D>("Mesh");
-        _reaction = new HitReactionMachine(MaxPoise, CombatTuning.StaggerSeconds, CombatTuning.DownedSeconds);
+        _reaction = new HitReactionMachine(
+            MaxPoise,
+            CombatTuning.StaggerSeconds,
+            CombatTuning.DownedSeconds
+        );
         _material = new StandardMaterial3D { AlbedoColor = BaseColor };
         _mesh.MaterialOverride = _material;
         _health.Died += OnDied;
