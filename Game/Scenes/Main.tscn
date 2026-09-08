@@ -1,6 +1,7 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="PackedScene" path="res://Game/Scenes/Player.tscn" id="1_player"]
+[ext_resource type="PackedScene" path="res://Game/Scenes/EnemyDummy.tscn" id="2_dummy"]
 
 [sub_resource type="PlaneMesh" id="floor_mesh"]
 size = Vector2(40, 40)
@@ -73,3 +74,12 @@ shape = SubResource("wall_shape")
 
 [node name="Player" parent="." instance=ExtResource("1_player")]
 position = Vector3(0, 0.2, 10)
+
+[node name="Dummy1" parent="." instance=ExtResource("2_dummy")]
+position = Vector3(0, 0.2, -2)
+
+[node name="Dummy2" parent="." instance=ExtResource("2_dummy")]
+position = Vector3(-1.8, 0.2, -4)
+
+[node name="Dummy3" parent="." instance=ExtResource("2_dummy")]
+position = Vector3(1.8, 0.2, -4)
