@@ -204,3 +204,59 @@ public class MeleeArcQueryTests
         Assert.Empty(hits);
     }
 }
+
+public class HitReactionMachineTests
+{
+    private static HitReactionMachine NewMachine() => new(60f, 0.28f, 2.5f);
+
+    [Fact]
+    public void PoiseBreak_CausesDowned()
+    {
+        var m = NewMachine();
+        m.ApplyHit(20f);
+        Assert.Equal(HitReactionState.Staggered, m.State);
+        m.ApplyHit(45f); // 韧性 60 - 20 - 45 < 0
+        Assert.Equal(HitReactionState.Downed, m.State);
+        Assert.True(m.IsDowned);
+    }
+
+    [Fact]
+    public void Stagger_RecoversAfterDuration()
+    {
+        var m = NewMachine();
+        m.ApplyHit(10f);
+        Assert.Equal(HitReactionState.Staggered, m.State);
+        m.Tick(0.10f);
+        Assert.Equal(HitReactionState.Staggered, m.State);
+        m.ApplyHit(10f); // 刷新硬直
+        m.Tick(0.20f);
+        Assert.Equal(HitReactionState.Staggered, m.State);
+        m.Tick(0.09f);
+        Assert.Equal(HitReactionState.Normal, m.State);
+    }
+
+    [Fact]
+    public void Downed_RecoversWithFullPoise()
+    {
+        var m = NewMachine();
+        m.ApplyHit(60f);
+        Assert.True(m.IsDowned);
+        Assert.Equal(0f, m.Poise);
+        m.Tick(2.4f);
+        Assert.True(m.IsDowned);
+        m.Tick(0.2f);
+        Assert.Equal(HitReactionState.Normal, m.State);
+        Assert.Equal(60f, m.Poise);
+    }
+
+    [Fact]
+    public void Downed_IgnoresFurtherHitReactions()
+    {
+        var m = NewMachine();
+        m.ApplyHit(60f);
+        m.Tick(0.5f);
+        m.ApplyHit(50f); // 倒地中再被击：韧性/状态不变（可被处决窗口不被打断）
+        Assert.Equal(HitReactionState.Downed, m.State);
+        Assert.Equal(0f, m.Poise);
+    }
+}
