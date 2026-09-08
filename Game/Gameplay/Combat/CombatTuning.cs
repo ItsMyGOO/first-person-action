@@ -74,4 +74,5 @@ public static class CombatTuning
     // —— 受击 ——
     public const float StaggerSeconds = 0.28f;
     public const float DownedSeconds = 2.5f;
+    public const float KnockbackDuration = 0.25f;
 }

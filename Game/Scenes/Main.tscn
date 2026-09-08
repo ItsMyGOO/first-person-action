@@ -1,7 +1,8 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=10 format=3]
 
 [ext_resource type="PackedScene" path="res://Game/Scenes/Player.tscn" id="1_player"]
 [ext_resource type="PackedScene" path="res://Game/Scenes/EnemyDummy.tscn" id="2_dummy"]
+[ext_resource type="Script" path="res://Game/Gameplay/Spatial/SpatialSystem.cs" id="3_spatial_system"]
 
 [sub_resource type="PlaneMesh" id="floor_mesh"]
 size = Vector2(40, 40)
@@ -19,6 +20,9 @@ size = Vector3(40, 3, 1)
 albedo_color = Color(0.35, 0.38, 0.42, 1)
 
 [node name="Main" type="Node3D"]
+
+[node name="SpatialSystem" type="Node" parent="."]
+script = ExtResource("3_spatial_system")
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
 rotation = Vector3(-0.785398, 0.523599, 0)
@@ -83,3 +87,9 @@ position = Vector3(-1.8, 0.2, -4)
 
 [node name="Dummy3" parent="." instance=ExtResource("2_dummy")]
 position = Vector3(1.8, 0.2, -4)
+
+[node name="HeavyDummy" parent="." instance=ExtResource("2_dummy")]
+position = Vector3(0, 0.2, -8)
+BodyRadius = 0.6
+BodyMass = 800.0
+BodyPushResistance = 800.0
