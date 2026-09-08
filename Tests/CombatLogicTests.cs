@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Godot;
 using GodotGameTemplate.Combat;
 using GodotGameTemplate.Core;
@@ -147,5 +148,59 @@ public class MeleeComboTrackerTests
         Assert.False(t.IsActive);
         Assert.True(t.TryAdvance());
         Assert.Equal(0, t.StageIndex);
+    }
+}
+
+public class MeleeArcQueryTests
+{
+    private sealed class Target
+    {
+        public Vector3 Pos;
+    }
+
+    [Fact]
+    public void FrontTarget_InRange_IsHit()
+    {
+        var targets = new List<Target> { new() { Pos = new Vector3(0, 1, -2) } };
+        List<Target> hits = MeleeArcQuery.FindHits(
+            Vector3.Zero, new Vector3(0, 0, -1), 2.5f, 55f, targets, t => t.Pos);
+        Assert.Single(hits);
+    }
+
+    [Fact]
+    public void BehindTarget_Missed()
+    {
+        var targets = new List<Target> { new() { Pos = new Vector3(0, 1, 2) } };
+        List<Target> hits = MeleeArcQuery.FindHits(
+            Vector3.Zero, new Vector3(0, 0, -1), 2.5f, 55f, targets, t => t.Pos);
+        Assert.Empty(hits);
+    }
+
+    [Fact]
+    public void OutOfRangeTarget_Missed()
+    {
+        var targets = new List<Target> { new() { Pos = new Vector3(0, 1, -3) } };
+        List<Target> hits = MeleeArcQuery.FindHits(
+            Vector3.Zero, new Vector3(0, 0, -1), 2.5f, 55f, targets, t => t.Pos);
+        Assert.Empty(hits);
+    }
+
+    [Fact]
+    public void SideTarget_BeyondHalfAngle_Missed()
+    {
+        // 距离 2、正侧方 = 90° 夹角 > 55° 半角
+        var targets = new List<Target> { new() { Pos = new Vector3(2, 1, 0) } };
+        List<Target> hits = MeleeArcQuery.FindHits(
+            Vector3.Zero, new Vector3(0, 0, -1), 2.5f, 55f, targets, t => t.Pos);
+        Assert.Empty(hits);
+    }
+
+    [Fact]
+    public void HeightDifference_BeyondTolerance_Missed()
+    {
+        var targets = new List<Target> { new() { Pos = new Vector3(0, 5, -2) } };
+        List<Target> hits = MeleeArcQuery.FindHits(
+            Vector3.Zero, new Vector3(0, 0, -1), 2.5f, 55f, targets, t => t.Pos);
+        Assert.Empty(hits);
     }
 }
