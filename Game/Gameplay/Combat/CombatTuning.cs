@@ -33,7 +33,7 @@ public static class CombatTuning
     public const float AttackRange = 2.2f;          // 近战判定距离
     public const float AttackHalfAngleDeg = 55f;    // 前方锥形半角
     public const float AttackMoveScale = 0.15f;     // 攻击期间移动输入衰减
-    public const float HitstopMs = 70f;             // 命中顿帧
+    public const int HitstopMs = 70;                // 命中顿帧（毫秒）
 
     // —— 移动 ——
     public const float WalkSpeed = 5.0f;

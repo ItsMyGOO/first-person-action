@@ -1,0 +1,75 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="PackedScene" path="res://Game/Scenes/Player.tscn" id="1_player"]
+
+[sub_resource type="PlaneMesh" id="floor_mesh"]
+size = Vector2(40, 40)
+
+[sub_resource type="BoxShape3D" id="floor_shape"]
+size = Vector3(40, 1, 40)
+
+[sub_resource type="BoxMesh" id="wall_mesh"]
+size = Vector3(40, 3, 1)
+
+[sub_resource type="BoxShape3D" id="wall_shape"]
+size = Vector3(40, 3, 1)
+
+[sub_resource type="StandardMaterial3D" id="floor_mat"]
+albedo_color = Color(0.35, 0.38, 0.42, 1)
+
+[node name="Main" type="Node3D"]
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+rotation = Vector3(-0.785398, 0.523599, 0)
+shadow_enabled = true
+
+[node name="Floor" type="StaticBody3D" parent="."]
+
+[node name="Mesh" type="MeshInstance3D" parent="Floor"]
+mesh = SubResource("floor_mesh")
+surface_material_override/0 = SubResource("floor_mat")
+
+[node name="Shape" type="CollisionShape3D" parent="Floor"]
+position = Vector3(0, -0.5, 0)
+shape = SubResource("floor_shape")
+
+[node name="WallNorth" type="StaticBody3D" parent="."]
+position = Vector3(0, 1.5, -20)
+
+[node name="Mesh" type="MeshInstance3D" parent="WallNorth"]
+mesh = SubResource("wall_mesh")
+
+[node name="Shape" type="CollisionShape3D" parent="WallNorth"]
+shape = SubResource("wall_shape")
+
+[node name="WallSouth" type="StaticBody3D" parent="."]
+position = Vector3(0, 1.5, 20)
+
+[node name="Mesh" type="MeshInstance3D" parent="WallSouth"]
+mesh = SubResource("wall_mesh")
+
+[node name="Shape" type="CollisionShape3D" parent="WallSouth"]
+shape = SubResource("wall_shape")
+
+[node name="WallEast" type="StaticBody3D" parent="."]
+position = Vector3(20, 1.5, 0)
+rotation = Vector3(0, 1.5707964, 0)
+
+[node name="Mesh" type="MeshInstance3D" parent="WallEast"]
+mesh = SubResource("wall_mesh")
+
+[node name="Shape" type="CollisionShape3D" parent="WallEast"]
+shape = SubResource("wall_shape")
+
+[node name="WallWest" type="StaticBody3D" parent="."]
+position = Vector3(-20, 1.5, 0)
+rotation = Vector3(0, 1.5707964, 0)
+
+[node name="Mesh" type="MeshInstance3D" parent="WallWest"]
+mesh = SubResource("wall_mesh")
+
+[node name="Shape" type="CollisionShape3D" parent="WallWest"]
+shape = SubResource("wall_shape")
+
+[node name="Player" parent="." instance=ExtResource("1_player")]
+position = Vector3(0, 0.2, 10)
