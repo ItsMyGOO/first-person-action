@@ -1,6 +1,8 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://Game/Gameplay/Combat/Player.cs" id="1_player"]
+[ext_resource type="Script" path="res://Game/Gameplay/Spatial/SpatialAgent.cs" id="2_spatial"]
+[ext_resource type="Script" path="res://Game/Gameplay/Combat/HealthComponent.cs" id="3_health"]
 
 [sub_resource type="CapsuleShape3D" id="cap_shape"]
 radius = 0.4
@@ -15,7 +17,7 @@ size = Vector3(0.07, 0.07, 0.5)
 
 [node name="Player" type="CharacterBody3D"]
 collision_layer = 2
-collision_mask = 5
+collision_mask = 1
 script = ExtResource("1_player")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]
@@ -24,6 +26,15 @@ shape = SubResource("cap_shape")
 [node name="BodyVisual" type="MeshInstance3D" parent="."]
 position = Vector3(0, 0.9, 0)
 mesh = SubResource("body_mesh")
+
+[node name="SpatialAgent" type="Node" parent="."]
+script = ExtResource("2_spatial")
+Radius = 0.45
+GameplayMass = 120.0
+PushResistance = 120.0
+
+[node name="HealthComponent" type="Node" parent="."]
+script = ExtResource("3_health")
 
 [node name="Head" type="Node3D" parent="."]
 position = Vector3(0, 1.6, 0)

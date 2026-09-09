@@ -1,45 +1,112 @@
 using System.Collections.Generic;
 using Godot;
+using GodotGameTemplate.Characters;
 using GodotGameTemplate.Core;
+using GodotGameTemplate.Spatial;
 
 namespace GodotGameTemplate.Combat;
 
 /// <summary>
 /// 玩家角色控制器（第一人称，规格第 3 节）。
-/// 移动为连续意图直接驱动（联机时改走意图流）；动作类输入经 InputCommandBuffer
-/// 缓冲后驱动 MeleeComboTracker 与闪避。「条件满足才消费」是缓冲的核心模式。
+/// 动作层为显式状态机：None / Melee / Dodge / Skill /（Aim 在弓箭手任务加入）。
+/// 输入采用物理帧边沿轮询：按住类状态（移动/瞄准）直读，离散动作用
+/// 「按下沿压入 InputCommandBuffer、条件满足才消费」的缓冲模式——
+/// 对自动化模拟与联机命令化都友好（规格第 6 节）。
+/// 技能经 IAbilityContext 驱动（Ability 纯逻辑、可单测）；
+/// 技能产生的强制位移统一进入移动管线，位移完成后仍受空间解析约束。
 /// </summary>
-public partial class Player : CharacterBody3D
+public partial class Player : CharacterBody3D, IAbilityContext
 {
     [Export]
     public float MouseSensitivity = CombatTuning.MouseSensitivity;
 
+    /// <summary>出生前由生成方注入（选人流程）；空则回退 GameSession 默认。</summary>
+    public CharacterDefinition? Definition { get; set; }
+
     private Node3D _head = null!;
+    private Camera3D _camera = null!;
     private MeshInstance3D _viewArm = null!;
+    private SpatialAgent _agent = null!;
+    private HealthComponent _health = null!;
+    private CharacterDefinition _def = null!;
     private float _yaw;
     private float _pitch;
 
     private readonly InputCommandBuffer _buffer = new();
+    private readonly List<Ability> _abilities = new();
+    private Ability? _activeAbility;
+    private ForcedMovement? _forced;
+    private bool _superArmor;
     private MeleeComboTracker _combo = null!;
     private float _timeAccum;
     private long _nowMs;
 
-    private bool _dodging;
+    // —— 动作层状态机 ——
+    private enum ActionState
+    {
+        None,
+        Melee,
+        Dodge,
+        Skill,
+        Aim,
+        AimCharge,
+    }
+
+    private ActionState _action = ActionState.None;
+
     private float _dodgeElapsed;
     private Vector3 _dodgeDirection = Vector3.Forward;
 
+    // —— 弓箭手 ——
+    private ChargeAccumulator _charge = null!;
+    private float _quickShotCooldown;
+    private float _aimBlend;
+
+    // —— 输入边沿（上一物理帧的按住状态）——
+    private bool _prevAttack;
+    private bool _prevJump;
+    private bool _prevDodge;
+    private bool _prevSkill1;
+    private bool _prevSkill2;
+    private bool _prevSkill3;
+    private bool _prevAim;
+
     public bool IsAttacking => _combo.IsActive;
 
-    public bool IsInvulnerable => _dodging && _dodgeElapsed < CombatTuning.DodgeInvulnerableSeconds;
+    public bool IsCastingSkill => _action == ActionState.Skill;
+
+    public bool IsAiming => _action is ActionState.Aim or ActionState.AimCharge;
+
+    public bool IsCharging => _charge.IsCharging;
+
+    public float ChargeProgress01 => _charge.Progress01;
+
+    public bool ShowCrosshair => _def.Style == AttackStyle.Ranged;
+
+    public bool IsInvulnerable =>
+        _action == ActionState.Dodge && _dodgeElapsed < CombatTuning.DodgeInvulnerableSeconds;
 
     public override void _Ready()
     {
+        _def = Definition ?? GameSession.Instance!.EnsureSelected();
+        foreach (SkillKind kind in _def.Skills)
+        {
+            _abilities.Add(AbilityFactory.Create(kind));
+        }
+
+        _charge = new ChargeAccumulator(_def.ChargeFullSeconds);
+
         _combo = new MeleeComboTracker(CombatTuning.WarriorCombo);
         _head = GetNode<Node3D>("Head");
+        _camera = GetNode<Camera3D>("Head/Camera3D");
         _viewArm = GetNode<MeshInstance3D>("Head/Camera3D/ViewModelArm");
+        _agent = GetNode<SpatialAgent>("SpatialAgent");
+        _health = GetNode<HealthComponent>("HealthComponent");
+        _health.Init(_def.MaxHealth);
         Input.MouseMode = Input.MouseModeEnum.Captured;
         // 本地视角隐藏完整身体（联机时按归属控制，队友视角可见——规格第 3 节）
         GetNode<MeshInstance3D>("BodyVisual").Visible = false;
+        AddToGroup(CombatTuning.PlayerGroup);
     }
 
     public override void _UnhandledInput(InputEvent @event)
@@ -60,24 +127,23 @@ public partial class Player : CharacterBody3D
         {
             Input.MouseMode = Input.MouseModeEnum.Visible;
         }
-        else if (@event.IsActionPressed("attack"))
-        {
-            _buffer.Push(InputCommand.Action(InputCommandKind.Attack), _nowMs);
-        }
-        else if (@event.IsActionPressed("jump"))
-        {
-            _buffer.Push(InputCommand.Action(InputCommandKind.Jump), _nowMs);
-        }
-        else if (@event.IsActionPressed("dodge"))
-        {
-            _buffer.Push(InputCommand.Action(InputCommandKind.Dodge), _nowMs);
-        }
     }
 
     public override void _Process(double delta)
     {
+        float dt = (float)delta;
         Rotation = new Vector3(0f, _yaw, 0f);
         _head.Rotation = new Vector3(_pitch, 0f, 0f);
+
+        // 瞄准表现（表现层只读状态，规格第 1 节）：FOV 收缩 + 肩视偏移
+        float aimTarget = IsAiming ? 1f : 0f;
+        _aimBlend = Mathf.MoveToward(_aimBlend, aimTarget, CombatTuning.AimBlendSpeed * dt);
+        _camera.Fov = Mathf.Lerp(CombatTuning.BaseFov, CombatTuning.AimFov, _aimBlend);
+        _camera.Position = new Vector3(
+            Mathf.Lerp(0f, CombatTuning.AimShoulderX, _aimBlend),
+            0f,
+            0f
+        );
     }
 
     public override void _PhysicsProcess(double delta)
@@ -86,36 +152,186 @@ public partial class Player : CharacterBody3D
         _timeAccum += dt;
         _nowMs = (long)(_timeAccum * 1000f);
 
+        TickInputEdges();
         TickActions(dt);
         TickMovement(dt);
         TickViewModel(dt);
     }
 
-    private bool CanAcceptAction => !_dodging && _combo.CanStartAction;
+    /// <summary>把按住状态的变化转换为命令边沿；攻击/瞄准按键按角色风格分派。</summary>
+    private void TickInputEdges()
+    {
+        TickAttackAndAimInput();
+        PushOnPressEdge(ref _prevJump, "jump", InputCommandKind.Jump);
+        PushOnPressEdge(ref _prevDodge, "dodge", InputCommandKind.Dodge);
+        PushOnPressEdge(ref _prevSkill1, "skill_1", InputCommandKind.Skill1);
+        PushOnPressEdge(ref _prevSkill2, "skill_2", InputCommandKind.Skill2);
+        PushOnPressEdge(ref _prevSkill3, "skill_3", InputCommandKind.Skill3);
+    }
+
+    /// <summary>攻击/瞄准输入（消逝的光芒式拉弓）：右键按住=瞄准，瞄准中左键按住=蓄力，松开=放箭。</summary>
+    private void TickAttackAndAimInput()
+    {
+        bool attackHeld = Input.IsActionPressed("attack");
+        bool attackPressed = attackHeld && !_prevAttack;
+        bool attackReleased = !attackHeld && _prevAttack;
+        _prevAttack = attackHeld;
+
+        bool aimHeld = Input.IsActionPressed("aim");
+        bool aimPressed = aimHeld && !_prevAim;
+        bool aimReleased = !aimHeld && _prevAim;
+        _prevAim = aimHeld;
+
+        if (_def.Style == AttackStyle.Melee)
+        {
+            if (attackPressed)
+            {
+                _buffer.Push(InputCommand.Action(InputCommandKind.Attack), _nowMs);
+            }
+
+            return;
+        }
+
+        // —— 弓箭手 ——
+        if (aimPressed && _action == ActionState.None)
+        {
+            _action = ActionState.Aim; // 按住右键：进入瞄准（肩视/移速下降）
+        }
+
+        if (aimReleased && IsAiming)
+        {
+            BreakAim(); // 收弓：蓄力中的话打断，不放箭
+        }
+
+        if (attackPressed && IsAiming)
+        {
+            _charge.Begin();
+            _action = ActionState.AimCharge; // 瞄准中按住左键：拉弓蓄力
+        }
+
+        if (attackReleased && _action == ActionState.AimCharge)
+        {
+            FireArrow(_charge.ConsumeRelease());
+            _action = ActionState.Aim; // 右键仍按住则保持瞄准，可继续蓄力
+        }
+
+        if (attackPressed && _action == ActionState.None && _quickShotCooldown <= 0f)
+        {
+            FireArrow(0, quickShot: true); // 非瞄准快速弱箭
+            _quickShotCooldown = _def.QuickShotCooldown;
+        }
+    }
+
+    private void PushOnPressEdge(ref bool prev, string action, InputCommandKind kind)
+    {
+        bool held = Input.IsActionPressed(action);
+        if (held && !prev)
+        {
+            _buffer.Push(InputCommand.Action(kind), _nowMs);
+        }
+
+        prev = held;
+    }
+
+    // —— 动作层状态机 ——
+
+    /// <summary>近战可接受（开始或连段链）：空闲，或处于连段中且可被取消。</summary>
+    private bool CanAcceptMelee =>
+        _action == ActionState.None || (_action == ActionState.Melee && _combo.CanStartAction);
+
+    /// <summary>闪避可接受：空闲、连段取消窗口、瞄准/蓄力中（打断瞄准）。</summary>
+    private bool CanAcceptDodge =>
+        _action == ActionState.None
+        || (_action == ActionState.Melee && _combo.CanStartAction)
+        || IsAiming;
+
+    /// <summary>技能可接受：空闲、连段取消窗口、瞄准/蓄力中（技能打断拉弓——规格确认项）。</summary>
+    private bool CanAcceptSkill => CanAcceptDodge;
 
     private void TickActions(float dt)
     {
-        if (CanAcceptAction && _buffer.TryConsume(InputCommandKind.Dodge, _nowMs, out _))
+        if (CanAcceptDodge && _buffer.TryConsume(InputCommandKind.Dodge, _nowMs, out _))
         {
             StartDodge();
         }
 
-        if (_dodging)
+        if (_action == ActionState.Dodge)
         {
             _dodgeElapsed += dt;
             if (_dodgeElapsed >= CombatTuning.DodgeDuration)
             {
-                _dodging = false;
+                _action = ActionState.None;
             }
         }
 
-        if (CanAcceptAction && _buffer.TryConsume(InputCommandKind.Attack, _nowMs, out _))
+        if (CanAcceptMelee && _buffer.TryConsume(InputCommandKind.Attack, _nowMs, out _))
         {
             _combo.TryAdvance();
+            _action = ActionState.Melee;
         }
 
+        // 技能：CD 中的技能不消费输入（缓冲 150ms 内自然过期）
+        TryCastSkill(0, InputCommandKind.Skill1);
+        TryCastSkill(1, InputCommandKind.Skill2);
+        TryCastSkill(2, InputCommandKind.Skill3);
+
         _combo.Tick(dt);
+        _charge.Tick(dt);
+        if (_quickShotCooldown > 0f)
+        {
+            _quickShotCooldown -= dt;
+        }
+
+        if (_action == ActionState.Melee && !_combo.IsActive)
+        {
+            _action = ActionState.None;
+        }
+
+        // 施法推进与结束清理
+        foreach (Ability ability in _abilities)
+        {
+            ability.Update(dt, this);
+        }
+
+        if (_action == ActionState.Skill && _activeAbility != null && !_activeAbility.IsCasting)
+        {
+            EndAbility();
+        }
+
         TickHitWindow();
+    }
+
+    private void TryCastSkill(int index, InputCommandKind command)
+    {
+        if (index >= _abilities.Count || !_abilities[index].CanCast)
+        {
+            return;
+        }
+
+        if (!CanAcceptSkill || !_buffer.TryConsume(command, _nowMs, out _))
+        {
+            return;
+        }
+
+        BreakAim(); // 技能打断瞄准/蓄力（规格确认项：打断后不放箭）
+        if (_action == ActionState.Melee)
+        {
+            _combo.Reset(); // 技能打断连段
+        }
+
+        _activeAbility = _abilities[index];
+        _action = ActionState.Skill;
+        _activeAbility.TryCast(this);
+    }
+
+    /// <summary>施法结束的统一收尾：恢复推力、解除霸体、清位移、回空闲。</summary>
+    private void EndAbility()
+    {
+        _activeAbility = null;
+        _forced = null;
+        _agent.CurrentMovementForce = _agent.MovementForce;
+        _superArmor = false;
+        _action = ActionState.None;
     }
 
     /// <summary>主动帧内的锥形判定（规格第 4 节）。命中即结算并触发 hit-stop。</summary>
@@ -178,7 +394,8 @@ public partial class Player : CharacterBody3D
 
     private void StartDodge()
     {
-        _dodging = true;
+        BreakAim(); // 闪避打断瞄准/蓄力
+        _action = ActionState.Dodge;
         _dodgeElapsed = 0f;
         Vector2 axis = Input.GetVector("move_left", "move_right", "move_forward", "move_back");
         _dodgeDirection =
@@ -187,6 +404,45 @@ public partial class Player : CharacterBody3D
                 : ForwardFlat();
         _combo.Reset(); // 闪避打断连段（取消规则的第一个成员）
     }
+
+    /// <summary>收弓/被打断：蓄力清零、退出瞄准（不放箭）。</summary>
+    private void BreakAim()
+    {
+        if (!IsAiming)
+        {
+            return;
+        }
+
+        _charge.Cancel();
+        _action = ActionState.None;
+    }
+
+    /// <summary>放箭：蓄力等级决定伤害/箭速/下坠；快速箭为弱化直射。</summary>
+    private void FireArrow(int level, bool quickShot = false)
+    {
+        Vector3 direction = -_camera.GlobalTransform.Basis.Z;
+        Vector3 origin = _camera.GlobalPosition + direction * 0.4f;
+        float damage = quickShot ? _def.QuickShotDamage : LevelValue(_def.ArrowDamageLevels, level);
+        float speed = quickShot ? 26f : LevelValue(_def.ArrowSpeedLevels, level);
+
+        Projectile.Spawn(
+            this,
+            origin,
+            direction,
+            speed,
+            new HitData
+            {
+                Damage = damage,
+                PoiseDamage = damage * 2f,
+                Knockback = direction * 1.5f,
+                Source = EntityId.None, // 联机时填玩家 NetworkId
+            },
+            gravity: !quickShot && level < 2 ? CombatTuning.ArrowGravity : 0f
+        );
+    }
+
+    private static float LevelValue(float[] levels, int level) =>
+        levels[Mathf.Clamp(level, 0, levels.Length - 1)];
 
     private void TickMovement(float dt)
     {
@@ -200,10 +456,33 @@ public partial class Player : CharacterBody3D
         Vector3 horizontal = new Vector3(Velocity.X, 0f, Velocity.Z);
         Vector3 target;
 
-        if (_dodging)
+        if (_forced != null)
+        {
+            // 强制位移（规格第 1 节 Forced 层）：位移增量转速度，仍走 MoveAndSlide 尊重墙体；
+            // 垂直方向交给重力/起跳，不做贴地
+            Vector3 delta = _forced.Tick(dt);
+            horizontal = delta / Mathf.Max(dt, 0.0001f);
+
+            Vector3 v = new Vector3(
+                horizontal.X,
+                Velocity.Y - CombatTuning.Gravity * dt,
+                horizontal.Z
+            );
+            Velocity = v;
+            MoveAndSlide();
+            return;
+        }
+
+        if (_action == ActionState.Dodge)
         {
             target = _dodgeDirection * CombatTuning.DodgeSpeed;
             horizontal = horizontal.MoveToward(target, CombatTuning.DodgeAccel * dt);
+        }
+        else if (_action == ActionState.Skill && _activeAbility != null)
+        {
+            // 施法期间的常规移动（旋风斩等无位移技能）
+            target = wish * CombatTuning.WalkSpeed * _activeAbility.Def.ActiveMoveScale;
+            horizontal = horizontal.MoveToward(target, CombatTuning.GroundAccel * dt);
         }
         else if (_combo.IsActive)
         {
@@ -219,7 +498,8 @@ public partial class Player : CharacterBody3D
         }
         else
         {
-            target = wish * CombatTuning.WalkSpeed;
+            float speedScale = IsAiming ? CombatTuning.AimSpeedScale : 1f; // 瞄准时移速下降
+            target = wish * CombatTuning.WalkSpeed * speedScale;
             float accel =
                 wish.LengthSquared() > 0.01f ? CombatTuning.GroundAccel : CombatTuning.GroundDecel;
             horizontal = horizontal.MoveToward(target, accel * dt);
@@ -266,4 +546,32 @@ public partial class Player : CharacterBody3D
         forward.Y = 0f;
         return forward.Normalized();
     }
+
+    // —— IAbilityContext（技能只经由该面与控制器交互，规格第 2 节） ——
+
+    Vector3 IAbilityContext.BodyPosition => GlobalPosition;
+
+    Vector3 IAbilityContext.ForwardFlat => ForwardFlat();
+
+    bool IAbilityContext.IsOnFloor => IsOnFloor();
+
+    float IAbilityContext.CurrentMovementForce
+    {
+        get => _agent.CurrentMovementForce;
+        set => _agent.CurrentMovementForce = value;
+    }
+
+    void IAbilityContext.RequestForcedMovement(ForcedMovement movement) => _forced = movement;
+
+    void IAbilityContext.CancelForcedMovement() => _forced = null;
+
+    void IAbilityContext.LaunchUp(float velocityY) =>
+        Velocity = new Vector3(Velocity.X, velocityY, Velocity.Z);
+
+    void IAbilityContext.SetSuperArmor(bool enabled) => _superArmor = enabled;
+
+    List<ICombatTarget> IAbilityContext.QueryTargets() => FindTargets();
+
+    void IAbilityContext.NotifyHitLanded(int hitCount) =>
+        HitstopManager.Request(CombatTuning.HitstopMs);
 }

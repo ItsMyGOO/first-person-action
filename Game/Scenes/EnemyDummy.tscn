@@ -14,7 +14,7 @@ height = 1.8
 
 [node name="DummyEnemy" type="CharacterBody3D" groups=["combat_targets"]]
 collision_layer = 4
-collision_mask = 7
+collision_mask = 1
 script = ExtResource("1_dummy")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]

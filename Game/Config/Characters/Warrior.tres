@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="CharacterDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Game/Gameplay/Characters/CharacterDefinition.cs" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+DisplayName = "战士"
+Style = 0
+MaxHealth = 120.0
+WalkSpeed = 5.0
+SkillIds = Array[int]([2, 1, 0])
+

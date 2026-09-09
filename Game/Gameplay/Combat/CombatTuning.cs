@@ -51,6 +51,7 @@ public static class CombatTuning
     };
 
     public const string TargetGroup = "combat_targets";
+    public const string PlayerGroup = "player";
     public const float AttackRange = 2.2f; // 近战判定距离
     public const float AttackHalfAngleDeg = 55f; // 前方锥形半角
     public const float AttackMoveScale = 0.15f; // 攻击期间移动输入衰减
@@ -74,4 +75,13 @@ public static class CombatTuning
     // —— 受击 ——
     public const float StaggerSeconds = 0.28f;
     public const float DownedSeconds = 2.5f;
+    public const float KnockbackDuration = 0.25f;
+
+    // —— 弓箭手瞄准 ——
+    public const float BaseFov = 90f;
+    public const float AimFov = 65f; // 瞄准时 FOV 收缩
+    public const float AimShoulderX = 0.35f; // 肩视镜头横向偏移（米）
+    public const float AimBlendSpeed = 10f; // 瞄准表现过渡速度
+    public const float AimSpeedScale = 0.5f; // 瞄准时移速比例
+    public const float ArrowGravity = 4f; // 未满级箭矢下坠（米/秒²）
 }

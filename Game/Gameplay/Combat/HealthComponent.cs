@@ -20,6 +20,13 @@ public partial class HealthComponent : Node
 
     public override void _Ready() => CurrentHealth = MaxHealth;
 
+    /// <summary>运行时按角色定义设置上限并回满（须在宿主 _Ready 之前或紧后调用）。</summary>
+    public void Init(float maxHealth)
+    {
+        MaxHealth = maxHealth;
+        CurrentHealth = maxHealth;
+    }
+
     public void ApplyDamage(float amount)
     {
         if (IsDead)
