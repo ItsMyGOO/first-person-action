@@ -12,9 +12,7 @@ public sealed class ChargeAbility : Ability
     private float _elapsed;
 
     public ChargeAbility(SkillDefinition def)
-        : base(def)
-    {
-    }
+        : base(def) { }
 
     protected override void OnCastStart(IAbilityContext ctx)
     {
@@ -24,8 +22,14 @@ public sealed class ChargeAbility : Ability
             ctx.SetSuperArmor(true);
         }
 
-        ctx.RequestForcedMovement(ForcedMovement.Linear(
-            ctx.ForwardFlat, Def.MoveDistance, Def.MoveDuration, ForcedMovementEase.Smooth));
+        ctx.RequestForcedMovement(
+            ForcedMovement.Linear(
+                ctx.ForwardFlat,
+                Def.MoveDistance,
+                Def.MoveDuration,
+                ForcedMovementEase.Smooth
+            )
+        );
     }
 
     protected override void TickCast(float dt, IAbilityContext ctx)

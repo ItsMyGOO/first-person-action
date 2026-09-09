@@ -13,7 +13,11 @@ public sealed class ChargeAccumulator
     private readonly float _level1Threshold;
     private readonly float _level2Threshold;
 
-    public ChargeAccumulator(float fullSeconds, float level1Threshold = 0.33f, float level2Threshold = 0.66f)
+    public ChargeAccumulator(
+        float fullSeconds,
+        float level1Threshold = 0.33f,
+        float level2Threshold = 0.66f
+    )
     {
         _fullSeconds = MathF.Max(0.01f, fullSeconds);
         _level1Threshold = level1Threshold;

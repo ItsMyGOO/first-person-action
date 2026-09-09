@@ -11,15 +11,19 @@ public sealed class BackstepAbility : Ability
     private float _elapsed;
 
     public BackstepAbility(SkillDefinition def)
-        : base(def)
-    {
-    }
+        : base(def) { }
 
     protected override void OnCastStart(IAbilityContext ctx)
     {
         _elapsed = 0f;
-        ctx.RequestForcedMovement(ForcedMovement.Linear(
-            -ctx.ForwardFlat, Def.MoveDistance, Def.MoveDuration, ForcedMovementEase.Smooth));
+        ctx.RequestForcedMovement(
+            ForcedMovement.Linear(
+                -ctx.ForwardFlat,
+                Def.MoveDistance,
+                Def.MoveDuration,
+                ForcedMovementEase.Smooth
+            )
+        );
     }
 
     protected override void TickCast(float dt, IAbilityContext ctx)

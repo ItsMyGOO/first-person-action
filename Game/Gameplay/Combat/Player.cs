@@ -111,13 +111,17 @@ public partial class Player : CharacterBody3D, IAbilityContext
 
     public override void _UnhandledInput(InputEvent @event)
     {
-        if (@event is InputEventMouseMotion motion && Input.MouseMode == Input.MouseModeEnum.Captured)
+        if (
+            @event is InputEventMouseMotion motion
+            && Input.MouseMode == Input.MouseModeEnum.Captured
+        )
         {
             _yaw -= motion.Relative.X * MouseSensitivity;
             _pitch = Mathf.Clamp(
                 _pitch - motion.Relative.Y * MouseSensitivity,
                 -Mathf.DegToRad(CombatTuning.PitchClampDeg),
-                Mathf.DegToRad(CombatTuning.PitchClampDeg));
+                Mathf.DegToRad(CombatTuning.PitchClampDeg)
+            );
         }
         else if (@event.IsActionPressed("ui_cancel"))
         {
@@ -135,7 +139,11 @@ public partial class Player : CharacterBody3D, IAbilityContext
         float aimTarget = IsAiming ? 1f : 0f;
         _aimBlend = Mathf.MoveToward(_aimBlend, aimTarget, CombatTuning.AimBlendSpeed * dt);
         _camera.Fov = Mathf.Lerp(CombatTuning.BaseFov, CombatTuning.AimFov, _aimBlend);
-        _camera.Position = new Vector3(Mathf.Lerp(0f, CombatTuning.AimShoulderX, _aimBlend), 0f, 0f);
+        _camera.Position = new Vector3(
+            Mathf.Lerp(0f, CombatTuning.AimShoulderX, _aimBlend),
+            0f,
+            0f
+        );
     }
 
     public override void _PhysicsProcess(double delta)
@@ -338,8 +346,13 @@ public partial class Player : CharacterBody3D, IAbilityContext
         Vector3 forward = ForwardFlat();
         List<ICombatTarget> targets = FindTargets();
         List<ICombatTarget> hits = MeleeArcQuery.FindHits(
-            GlobalPosition, forward, CombatTuning.AttackRange,
-            CombatTuning.AttackHalfAngleDeg, targets, t => t.Center);
+            GlobalPosition,
+            forward,
+            CombatTuning.AttackRange,
+            CombatTuning.AttackHalfAngleDeg,
+            targets,
+            t => t.Center
+        );
 
         if (hits.Count == 0)
         {
@@ -348,13 +361,15 @@ public partial class Player : CharacterBody3D, IAbilityContext
 
         foreach (ICombatTarget target in hits)
         {
-            target.ApplyHit(new HitData
-            {
-                Damage = stage.Damage,
-                PoiseDamage = stage.PoiseDamage,
-                Knockback = forward * stage.Knockback + Vector3.Up * 0.5f,
-                Source = EntityId.None, // 联机时填玩家 NetworkId
-            });
+            target.ApplyHit(
+                new HitData
+                {
+                    Damage = stage.Damage,
+                    PoiseDamage = stage.PoiseDamage,
+                    Knockback = forward * stage.Knockback + Vector3.Up * 0.5f,
+                    Source = EntityId.None, // 联机时填玩家 NetworkId
+                }
+            );
         }
 
         if (_combo.ConsumeHit())
@@ -383,9 +398,10 @@ public partial class Player : CharacterBody3D, IAbilityContext
         _action = ActionState.Dodge;
         _dodgeElapsed = 0f;
         Vector2 axis = Input.GetVector("move_left", "move_right", "move_forward", "move_back");
-        _dodgeDirection = axis.LengthSquared() > 0.01f
-            ? (GlobalTransform.Basis * new Vector3(axis.X, 0f, axis.Y)).Normalized()
-            : ForwardFlat();
+        _dodgeDirection =
+            axis.LengthSquared() > 0.01f
+                ? (GlobalTransform.Basis * new Vector3(axis.X, 0f, axis.Y)).Normalized()
+                : ForwardFlat();
         _combo.Reset(); // 闪避打断连段（取消规则的第一个成员）
     }
 
@@ -409,13 +425,20 @@ public partial class Player : CharacterBody3D, IAbilityContext
         float damage = quickShot ? _def.QuickShotDamage : LevelValue(_def.ArrowDamageLevels, level);
         float speed = quickShot ? 26f : LevelValue(_def.ArrowSpeedLevels, level);
 
-        Projectile.Spawn(this, origin, direction, speed, new HitData
-        {
-            Damage = damage,
-            PoiseDamage = damage * 2f,
-            Knockback = direction * 1.5f,
-            Source = EntityId.None, // 联机时填玩家 NetworkId
-        }, gravity: !quickShot && level < 2 ? CombatTuning.ArrowGravity : 0f);
+        Projectile.Spawn(
+            this,
+            origin,
+            direction,
+            speed,
+            new HitData
+            {
+                Damage = damage,
+                PoiseDamage = damage * 2f,
+                Knockback = direction * 1.5f,
+                Source = EntityId.None, // 联机时填玩家 NetworkId
+            },
+            gravity: !quickShot && level < 2 ? CombatTuning.ArrowGravity : 0f
+        );
     }
 
     private static float LevelValue(float[] levels, int level) =>
@@ -440,7 +463,11 @@ public partial class Player : CharacterBody3D, IAbilityContext
             Vector3 delta = _forced.Tick(dt);
             horizontal = delta / Mathf.Max(dt, 0.0001f);
 
-            Vector3 v = new Vector3(horizontal.X, Velocity.Y - CombatTuning.Gravity * dt, horizontal.Z);
+            Vector3 v = new Vector3(
+                horizontal.X,
+                Velocity.Y - CombatTuning.Gravity * dt,
+                horizontal.Z
+            );
             Velocity = v;
             MoveAndSlide();
             return;
@@ -473,7 +500,8 @@ public partial class Player : CharacterBody3D, IAbilityContext
         {
             float speedScale = IsAiming ? CombatTuning.AimSpeedScale : 1f; // 瞄准时移速下降
             target = wish * CombatTuning.WalkSpeed * speedScale;
-            float accel = wish.LengthSquared() > 0.01f ? CombatTuning.GroundAccel : CombatTuning.GroundDecel;
+            float accel =
+                wish.LengthSquared() > 0.01f ? CombatTuning.GroundAccel : CombatTuning.GroundDecel;
             horizontal = horizontal.MoveToward(target, accel * dt);
         }
 
@@ -544,5 +572,6 @@ public partial class Player : CharacterBody3D, IAbilityContext
 
     List<ICombatTarget> IAbilityContext.QueryTargets() => FindTargets();
 
-    void IAbilityContext.NotifyHitLanded(int hitCount) => HitstopManager.Request(CombatTuning.HitstopMs);
+    void IAbilityContext.NotifyHitLanded(int hitCount) =>
+        HitstopManager.Request(CombatTuning.HitstopMs);
 }

@@ -15,22 +15,26 @@ public partial class Projectile : Area3D
     private float _gravity;
     private float _life = 3f;
 
-    private Projectile()
-    {
-    }
+    private Projectile() { }
 
     /// <summary>生成一支箭。host 通常为玩家节点（箭矢作为其子节点，随场景销毁）。</summary>
     public static Projectile Spawn(
-        Node host, Vector3 origin, Vector3 direction, float speed, HitData hit, float gravity = 0f)
+        Node host,
+        Vector3 origin,
+        Vector3 direction,
+        float speed,
+        HitData hit,
+        float gravity = 0f
+    )
     {
         var projectile = new Projectile
         {
             _hit = hit,
             _velocity = direction.Normalized() * speed,
             _gravity = gravity,
-            Position = origin,
         };
         host.AddChild(projectile);
+        projectile.GlobalPosition = origin; // AddChild 后再设，避免局部/世界坐标混淆
         return projectile;
     }
 
@@ -42,8 +46,14 @@ public partial class Projectile : Area3D
 
         var shape = new CollisionShape3D { Shape = new SphereShape3D { Radius = 0.15f } };
         AddChild(shape);
-        var mesh = new MeshInstance3D { Mesh = new BoxMesh { Size = new Vector3(0.05f, 0.05f, 0.6f) } };
-        mesh.MaterialOverride = new StandardMaterial3D { AlbedoColor = new Color(0.8f, 0.65f, 0.4f) };
+        var mesh = new MeshInstance3D
+        {
+            Mesh = new BoxMesh { Size = new Vector3(0.05f, 0.05f, 0.6f) },
+        };
+        mesh.MaterialOverride = new StandardMaterial3D
+        {
+            AlbedoColor = new Color(0.8f, 0.65f, 0.4f),
+        };
         AddChild(mesh);
 
         BodyEntered += OnBodyEntered;

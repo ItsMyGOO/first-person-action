@@ -31,7 +31,11 @@ public static class SpatialResolver
                     continue;
                 }
 
-                Vector3 flat = new Vector3(a.Position.X - b.Position.X, 0f, a.Position.Z - b.Position.Z);
+                Vector3 flat = new Vector3(
+                    a.Position.X - b.Position.X,
+                    0f,
+                    a.Position.Z - b.Position.Z
+                );
                 float minDist = a.Radius + b.Radius;
                 float dist = flat.Length();
                 if (dist >= minDist)

@@ -9,8 +9,10 @@ public partial class CharacterSelect : Control
     public override void _Ready()
     {
         Input.MouseMode = Input.MouseModeEnum.Visible;
-        GetNode<Button>("Panel/VBox/WarriorButton").Pressed += () => Select("res://Game/Config/Characters/Warrior.tres");
-        GetNode<Button>("Panel/VBox/ArcherButton").Pressed += () => Select("res://Game/Config/Characters/Archer.tres");
+        GetNode<Button>("Panel/VBox/WarriorButton").Pressed += () =>
+            Select("res://Game/Config/Characters/Warrior.tres");
+        GetNode<Button>("Panel/VBox/ArcherButton").Pressed += () =>
+            Select("res://Game/Config/Characters/Archer.tres");
     }
 
     private void Select(string path)

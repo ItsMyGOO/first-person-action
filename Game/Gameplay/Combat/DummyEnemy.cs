@@ -52,7 +52,11 @@ public partial class DummyEnemy : CharacterBody3D, ICombatTarget
         _agent.Radius = BodyRadius;
         _agent.GameplayMass = BodyMass;
         _agent.PushResistance = BodyPushResistance;
-        _reaction = new HitReactionMachine(MaxPoise, CombatTuning.StaggerSeconds, CombatTuning.DownedSeconds);
+        _reaction = new HitReactionMachine(
+            MaxPoise,
+            CombatTuning.StaggerSeconds,
+            CombatTuning.DownedSeconds
+        );
         _material = new StandardMaterial3D { AlbedoColor = BaseColor };
         _mesh.MaterialOverride = _material;
         _health.Died += OnDied;

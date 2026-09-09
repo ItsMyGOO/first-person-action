@@ -29,7 +29,12 @@ public sealed class ForcedMovement
 
     public bool IsFinished => Elapsed >= Duration;
 
-    private ForcedMovement(Vector3 direction, float distance, float duration, ForcedMovementEase ease)
+    private ForcedMovement(
+        Vector3 direction,
+        float distance,
+        float duration,
+        ForcedMovementEase ease
+    )
     {
         Direction = direction;
         Distance = distance;
@@ -38,9 +43,11 @@ public sealed class ForcedMovement
     }
 
     public static ForcedMovement Linear(
-        Vector3 direction, float distance, float duration,
-        ForcedMovementEase ease = ForcedMovementEase.Smooth) =>
-        new(direction, distance, duration, ease);
+        Vector3 direction,
+        float distance,
+        float duration,
+        ForcedMovementEase ease = ForcedMovementEase.Smooth
+    ) => new(direction, distance, duration, ease);
 
     /// <summary>推进并返回本帧水平位移增量；结束后返回零向量。</summary>
     public Vector3 Tick(float dt)
@@ -56,6 +63,5 @@ public sealed class ForcedMovement
         return Direction * Distance * (Curve(t1) - Curve(t0));
     }
 
-    private float Curve(float t) =>
-        Ease == ForcedMovementEase.Smooth ? t * t * (3f - 2f * t) : t;
+    private float Curve(float t) => Ease == ForcedMovementEase.Smooth ? t * t * (3f - 2f * t) : t;
 }

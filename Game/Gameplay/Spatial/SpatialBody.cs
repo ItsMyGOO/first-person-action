@@ -19,9 +19,7 @@ public sealed class SpatialBody
     /// <summary>Resolve 输出：本帧应施加的水平修正向量。</summary>
     public Vector3 Correction;
 
-    public SpatialBody()
-    {
-    }
+    public SpatialBody() { }
 
     public SpatialBody(float radius, float gameplayMass, float pushResistance, float movementForce)
     {

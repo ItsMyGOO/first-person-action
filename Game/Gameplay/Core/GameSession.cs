@@ -23,7 +23,9 @@ public partial class GameSession : Node
             return SelectedCharacter;
         }
 
-        SelectedCharacter = ResourceLoader.Load<CharacterDefinition>("res://Game/Config/Characters/Warrior.tres");
+        SelectedCharacter = ResourceLoader.Load<CharacterDefinition>(
+            "res://Game/Config/Characters/Warrior.tres"
+        );
         return SelectedCharacter!;
     }
 }

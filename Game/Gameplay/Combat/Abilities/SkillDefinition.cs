@@ -3,9 +3,9 @@ namespace GodotGameTemplate.Combat;
 public enum SkillKind
 {
     Whirlwind = 0, // 旋风斩：360° 填充技
-    Charge = 1,    // 冲锋：直线位移，按挤开规则推人/被挡停
-    LeapSlam = 2,  // 跳劈：弧线强制位移 + 落地 AoE 击退
-    Backstep = 3,  // 后跳：弓手位移技，打断瞄准/蓄力
+    Charge = 1, // 冲锋：直线位移，按挤开规则推人/被挡停
+    LeapSlam = 2, // 跳劈：弧线强制位移 + 落地 AoE 击退
+    Backstep = 3, // 后跳：弓手位移技，打断瞄准/蓄力
 }
 
 /// <summary>

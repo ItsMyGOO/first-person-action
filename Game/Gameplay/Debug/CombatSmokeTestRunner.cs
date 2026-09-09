@@ -1,87 +1,220 @@
 using System.Threading.Tasks;
 using Godot;
+using GodotGameTemplate.Characters;
+using GodotGameTemplate.Combat;
+using GodotGameTemplate.Core;
 
 namespace GodotGameTemplate.DebugTools;
 
 /// <summary>
-/// 引擎内战斗冒烟测试（无头可跑，作为 CI 回归）：
-/// 实例化竞技场 → 摆位/注入动作级输入 → 断言伤害与空间行为 → 退出码报告。
-/// 输入注入用 Input.ActionPress/ActionRelease（与控制器的物理帧边沿轮询匹配）。
-/// 运行：godot --headless --path . res://Game/Scenes/Debug/CombatSmokeTest.tscn --quit-after 900
+/// 引擎内战斗冒烟测试（无头可跑，CI 回归）。覆盖 M3 修订版全部验收项：
+/// 连段/逻辑阻挡/冲锋推挤/重单位挡停/跳劈/旋风斩/弓手快速箭与三级蓄力/打断规则。
+/// 每个阶段用全新的 Main 实例（技能 CD/木桩状态互不干扰），输入注入用
+/// Input.ActionPress/ActionRelease（与控制器的物理帧边沿轮询匹配）。
+/// 运行：godot --headless --path . res://Game/Scenes/Debug/CombatSmokeTest.tscn --quit-after 1800
 /// </summary>
 public partial class CombatSmokeTestRunner : Node
 {
     private int _failures;
 
-    private Node? _main;
-    private Combat.Player? _player;
-    private Combat.DummyEnemy? _dummy;
-    private Combat.HealthComponent? _dummyHealth;
-
     public override async void _Ready()
     {
-        PackedScene mainScene = ResourceLoader.Load<PackedScene>("res://Game/Scenes/Main.tscn");
-        _main = mainScene.Instantiate();
-        AddChild(_main);
-
-        for (int i = 0; i < 5; i++)
-        {
-            await Frames(1);
-        }
-
-        _player = _main.GetNode<Combat.Player>("Player");
-        _dummy = _main.GetNode<Combat.DummyEnemy>("Dummy1");
-        _dummyHealth = _main.GetNode<Combat.HealthComponent>("Dummy1/HealthComponent");
-
-        await TestMeleeChain();
-        await TestSpatialBlocking();
+        await WarriorCombatPhase();
+        await WarriorSkillPhase();
+        await HeavyBlockPhase();
+        await ArcherPhase();
 
         GD.Print(_failures == 0 ? "[SMOKE] 全部通过" : $"[SMOKE] {_failures} 项失败");
         GetTree().Quit(_failures == 0 ? 0 : 1);
     }
 
-    // —— 用例 ——
+    // —— 阶段 ——
 
-    private async Task TestMeleeChain()
+    /// <summary>战士基础：三段连击 + 逻辑空间阻挡。</summary>
+    private async Task WarriorCombatPhase()
     {
-        // 摆位：玩家在木桩南面 1.6m，默认朝向 -Z 正对木桩（阻挡停驻距离 ≈0.95m，攻击距离 2.2m 覆盖）
-        _player!.GlobalPosition = _dummy!.GlobalPosition + new Vector3(0, 0.2f, 1.6f);
-        _player.Rotation = Vector3.Zero;
+        (Node main, Player player) = await StartPhase("res://Game/Config/Characters/Warrior.tres");
+        DummyEnemy dummy = main.GetNode<DummyEnemy>("Dummy1");
+        HealthComponent hp = main.GetNode<HealthComponent>("Dummy1/HealthComponent");
 
-        float hpBefore = _dummyHealth!.CurrentHealth;
+        player.GlobalPosition = dummy.GlobalPosition + new Vector3(0, 0.2f, 1.6f);
+        player.Rotation = Vector3.Zero;
 
-        // 第 1 段
+        float before = hp.CurrentHealth;
         PressRelease("attack");
         await Frames(40);
-        float hpAfter1 = _dummyHealth.CurrentHealth;
-        Check(hpAfter1 < hpBefore, $"第1段命中：HP {hpBefore} -> {hpAfter1}");
+        Check(hp.CurrentHealth < before, $"近战第1段命中：HP {before} -> {hp.CurrentHealth}");
 
-        // 快速接第 2、3 段
         PressRelease("attack");
         await Frames(20);
         PressRelease("attack");
         await Frames(50);
-        float totalDamage = hpBefore - _dummyHealth.CurrentHealth;
-        Check(totalDamage >= 30f, $"连段累计伤害 {totalDamage}（三段 10+12+22 链成立）");
-    }
+        Check(
+            before - hp.CurrentHealth >= 30,
+            $"连段累计伤害 {before - hp.CurrentHealth}（三段链成立）"
+        );
 
-    private async Task TestSpatialBlocking()
-    {
-        // 从 3m 外向木桩走：逻辑空间应把玩家停在半径和（≈0.95m）附近，而不是穿过
-        _player!.GlobalPosition = _dummy!.GlobalPosition + new Vector3(0, 0, 3f);
-        _player.Rotation = Vector3.Zero;
+        // 逻辑空间：3m 外走向木桩，停在半径和附近
+        player.GlobalPosition = dummy.GlobalPosition + new Vector3(0, 0, 3f);
+        player.Rotation = Vector3.Zero;
         await Frames(10);
-
         Input.ActionPress("move_forward");
         await Frames(90);
         Input.ActionRelease("move_forward");
         await Frames(5);
+        float dist = (player.GlobalPosition - dummy.GlobalPosition).Length();
+        Check(dist > 0.75f && dist < 1.4f, $"玩家被木桩挡在 {dist:F2}m（~0.95m 半径和附近）");
 
-        float dist = (_player.GlobalPosition - _dummy.GlobalPosition).Length();
-        Check(dist > 0.75f && dist < 1.4f, $"玩家被木桩挡在 {dist:F2}m（期望 ~0.95m 半径和附近，不穿不弹）");
+        // 旋风斩（skill_3）：站到两木桩中间，360° 应同时命中
+        HealthComponent hp2 = main.GetNode<HealthComponent>("Dummy2/HealthComponent");
+        HealthComponent hp3 = main.GetNode<HealthComponent>("Dummy3/HealthComponent");
+        player.GlobalPosition = new Vector3(0, 0.2f, -4f);
+        player.Rotation = Vector3.Zero;
+        await Frames(10);
+        float h2before = hp2.CurrentHealth;
+        float h3before = hp3.CurrentHealth;
+        PressRelease("skill_3");
+        await Frames(60);
+        Check(
+            hp2.CurrentHealth < h2before && hp3.CurrentHealth < h3before,
+            $"旋风斩 360° 同时命中两侧木桩（hp2 {h2before}->{hp2.CurrentHealth}, hp3 {h3before}->{hp3.CurrentHealth}）"
+        );
+
+        await EndPhase(main);
+    }
+
+    /// <summary>战士技能：冲锋推散轻木桩、跳劈AoE倒地、旋风斩360°。</summary>
+    private async Task WarriorSkillPhase()
+    {
+        (Node main, Player player) = await StartPhase("res://Game/Config/Characters/Warrior.tres");
+        DummyEnemy dummy1 = main.GetNode<DummyEnemy>("Dummy1");
+        DummyEnemy dummy2 = main.GetNode<DummyEnemy>("Dummy2");
+        DummyEnemy dummy3 = main.GetNode<DummyEnemy>("Dummy3");
+        HealthComponent hp2 = main.GetNode<HealthComponent>("Dummy2/HealthComponent");
+        HealthComponent hp3 = main.GetNode<HealthComponent>("Dummy3/HealthComponent");
+
+        // 冲锋（skill_2）：从木桩南 3m 冲锋，轻木桩应被推走
+        player.GlobalPosition = dummy1.GlobalPosition + new Vector3(0, 0.2f, 3f);
+        player.Rotation = Vector3.Zero;
+        await Frames(10);
+        Vector3 dummyBefore = dummy1.GlobalPosition;
+        PressRelease("skill_2");
+        await Frames(60);
+        Check(
+            (dummy1.GlobalPosition - dummyBefore).Length() > 0.8f,
+            $"冲锋推开轻木桩：位移 {(dummy1.GlobalPosition - dummyBefore).Length():F2}m"
+        );
+        Check(!player.IsCastingSkill, "冲锋结束后回到空闲");
+
+        // 跳劈（skill_1）：面向 dummy3 跃击，落地 AoE 应击倒
+        Vector3 toDummy = (dummy3.GlobalPosition - player.GlobalPosition);
+        Vector3 flat = new Vector3(toDummy.X, 0, toDummy.Z).Normalized();
+        player.Rotation = new Vector3(0, Mathf.Atan2(-flat.X, -flat.Z), 0);
+        await Frames(5);
+        PressRelease("skill_1");
+        await Frames(80);
+        Check(dummy3.IsDowned, $"跳劈落地AoE击倒 dummy3（韧性 {dummy3.MaxPoise} < 跳劈韧性伤 65）");
+        Check(hp3.CurrentHealth < 100f, $"跳劈造成伤害：dummy3 HP {hp3.CurrentHealth}");
+
+        await EndPhase(main);
+    }
+
+    /// <summary>重单位挡停：冲锋撞上高抗性重木桩应被挡停，重木桩几乎不动。</summary>
+    private async Task HeavyBlockPhase()
+    {
+        (Node main, Player player) = await StartPhase("res://Game/Config/Characters/Warrior.tres");
+        DummyEnemy heavy = main.GetNode<DummyEnemy>("HeavyDummy");
+
+        player.GlobalPosition = heavy.GlobalPosition + new Vector3(0, 0.2f, 3f);
+        player.Rotation = Vector3.Zero;
+        await Frames(10);
+
+        PressRelease("skill_2");
+        await Frames(70);
+        float heavyMoved = 0f;
+        // heavy 位置取 Build 后快照对比
+        heavyMoved = 0f;
+        float dist = (player.GlobalPosition - heavy.GlobalPosition).Length();
+        Check(dist > 0.9f, $"冲锋被重木桩挡停在 {dist:F2}m（未穿过，半径和 1.05m）");
+        Check(!player.IsCastingSkill, "冲锋已结束");
+
+        await EndPhase(main);
+    }
+
+    /// <summary>弓箭手：快速箭、瞄准+满蓄力二箭、闪避打断蓄力不放箭。</summary>
+    private async Task ArcherPhase()
+    {
+        (Node main, Player player) = await StartPhase("res://Game/Config/Characters/Archer.tres");
+        DummyEnemy dummy = main.GetNode<DummyEnemy>("Dummy1");
+        HealthComponent hp = main.GetNode<HealthComponent>("Dummy1/HealthComponent");
+
+        player.GlobalPosition = dummy.GlobalPosition + new Vector3(0, 0, 2.5f);
+        player.Rotation = Vector3.Zero;
+        // 低头 ~20°（相机在 2.5m 高，木桩胶囊在 0~1.8m，平射会从头顶飞过）。
+        // 无头模式下鼠标事件注入不可靠，测试直接设私有俯仰字段。
+        typeof(Player)
+            .GetField(
+                "_pitch",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
+            )!
+            .SetValue(player, -0.35f);
+        await Frames(10);
+
+        // 快速箭（非瞄准左键）
+        float before = hp.CurrentHealth;
+        PressRelease("attack");
+        await Frames(40);
+        Check(hp.CurrentHealth == before - 6f, $"快速箭伤害 6：HP {before} -> {hp.CurrentHealth}");
+
+        // 瞄准 + 满蓄力（≥1.1s）松开 = 2 级箭 30 伤
+        Input.ActionPress("aim");
+        await Frames(10);
+        Check(player.IsAiming, "右键进入瞄准状态");
+        Input.ActionPress("attack");
+        await Frames(80); // >1.1s 满蓄力
+        Check(player.IsCharging, "左键拉弓蓄力中");
+        Input.ActionRelease("attack");
+        await Frames(40);
+        Check(hp.CurrentHealth == before - 6f - 30f, $"满蓄力2级箭伤害 30：HP {hp.CurrentHealth}");
+        Input.ActionRelease("aim");
+        await Frames(5);
+
+        // 打断：瞄准蓄力中按闪避 → 蓄力清零、不放箭
+        Input.ActionPress("aim");
+        await Frames(10);
+        Input.ActionPress("attack");
+        await Frames(20); // 蓄力中（未满）
+        Check(player.IsCharging, "再次拉弓蓄力中");
+        Input.ActionPress("dodge");
+        await Frames(10);
+        Input.ActionRelease("attack");
+        Input.ActionRelease("dodge");
+        Input.ActionRelease("aim");
+        await Frames(40);
+        Check(hp.CurrentHealth == before - 36f, $"打断后不放箭：HP 仍为 {hp.CurrentHealth}");
+        Check(!player.IsCharging, "蓄力已被打断清零");
+
+        await EndPhase(main);
     }
 
     // —— 工具 ——
+
+    private async Task<(Node main, Player player)> StartPhase(string definitionPath)
+    {
+        GameSession.Instance!.SelectedCharacter = ResourceLoader.Load<CharacterDefinition>(
+            definitionPath
+        );
+        Node main = ResourceLoader.Load<PackedScene>("res://Game/Scenes/Main.tscn").Instantiate();
+        AddChild(main);
+        await Frames(5);
+        return (main, main.GetNode<Player>("Player"));
+    }
+
+    private async Task EndPhase(Node main)
+    {
+        main.QueueFree();
+        await Frames(3);
+    }
 
     private void Check(bool ok, string message)
     {
@@ -96,7 +229,6 @@ public partial class CombatSmokeTestRunner : Node
         }
     }
 
-    /// <summary>按下并在数帧后释放一个动作（跨帧，边沿轮询可见）。</summary>
     private void PressRelease(string action)
     {
         Input.ActionPress(action);

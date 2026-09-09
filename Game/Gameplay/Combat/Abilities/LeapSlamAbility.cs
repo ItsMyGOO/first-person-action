@@ -15,9 +15,7 @@ public sealed class LeapSlamAbility : Ability
     private bool _impacted;
 
     public LeapSlamAbility(SkillDefinition def)
-        : base(def)
-    {
-    }
+        : base(def) { }
 
     protected override void OnCastStart(IAbilityContext ctx)
     {
@@ -25,8 +23,14 @@ public sealed class LeapSlamAbility : Ability
         _impacted = false;
         ctx.SetSuperArmor(true);
         ctx.LaunchUp(Def.LaunchVelocityY);
-        ctx.RequestForcedMovement(ForcedMovement.Linear(
-            ctx.ForwardFlat, Def.MoveDistance, Def.MoveDuration, ForcedMovementEase.Linear));
+        ctx.RequestForcedMovement(
+            ForcedMovement.Linear(
+                ctx.ForwardFlat,
+                Def.MoveDistance,
+                Def.MoveDuration,
+                ForcedMovementEase.Linear
+            )
+        );
     }
 
     protected override void TickCast(float dt, IAbilityContext ctx)
@@ -50,16 +54,24 @@ public sealed class LeapSlamAbility : Ability
     {
         List<ICombatTarget> targets = ctx.QueryTargets();
         List<ICombatTarget> hits = MeleeArcQuery.FindHits(
-            ctx.BodyPosition, ctx.ForwardFlat, Def.AttackRange, Def.HalfAngleDeg, targets, t => t.Center);
+            ctx.BodyPosition,
+            ctx.ForwardFlat,
+            Def.AttackRange,
+            Def.HalfAngleDeg,
+            targets,
+            t => t.Center
+        );
 
         foreach (ICombatTarget target in hits)
         {
-            target.ApplyHit(new HitData
-            {
-                Damage = Def.Damage,
-                PoiseDamage = Def.PoiseDamage,
-                Knockback = (target.Center - ctx.BodyPosition).Normalized() * Def.Knockback,
-            });
+            target.ApplyHit(
+                new HitData
+                {
+                    Damage = Def.Damage,
+                    PoiseDamage = Def.PoiseDamage,
+                    Knockback = (target.Center - ctx.BodyPosition).Normalized() * Def.Knockback,
+                }
+            );
         }
 
         if (hits.Count > 0)

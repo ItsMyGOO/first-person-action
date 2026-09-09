@@ -8,10 +8,24 @@ namespace GodotGameTemplate.Tests;
 public class SpatialResolverTests
 {
     /// <summary>构造一对相距 dist 的单位（沿 +Z/-Z 方向摆放）。</summary>
-    private static (SpatialBody A, SpatialBody B) Pair(float dist, float massA = 100f, float resA = 100f, float massB = 100f, float resB = 100f, float forceA = 100f, float forceB = 100f)
+    private static (SpatialBody A, SpatialBody B) Pair(
+        float dist,
+        float massA = 100f,
+        float resA = 100f,
+        float massB = 100f,
+        float resB = 100f,
+        float forceA = 100f,
+        float forceB = 100f
+    )
     {
-        var a = new SpatialBody(0.5f, massA, resA, forceA) { Position = new Vector3(0, 0, -dist / 2f) };
-        var b = new SpatialBody(0.5f, massB, resB, forceB) { Position = new Vector3(0, 0, dist / 2f) };
+        var a = new SpatialBody(0.5f, massA, resA, forceA)
+        {
+            Position = new Vector3(0, 0, -dist / 2f),
+        };
+        var b = new SpatialBody(0.5f, massB, resB, forceB)
+        {
+            Position = new Vector3(0, 0, dist / 2f),
+        };
         return (a, b);
     }
 
@@ -44,7 +58,13 @@ public class SpatialResolverTests
     public void HeavyResistance_BlocksCharger_ChargerYieldsMostly()
     {
         // 冲锋者 force 500 打不穿抗性 800 的重单位 → 逆质量分摊，冲锋者让大头
-        (SpatialBody a, SpatialBody b) = Pair(0.6f, massA: 120f, resB: 800f, massB: 800f, forceA: 500f);
+        (SpatialBody a, SpatialBody b) = Pair(
+            0.6f,
+            massA: 120f,
+            resB: 800f,
+            massB: 800f,
+            forceA: 500f
+        );
         SpatialResolver.Resolve(new List<SpatialBody> { a, b });
 
         float shareA = 800f / (120f + 800f); // a（冲锋者）承担 87%

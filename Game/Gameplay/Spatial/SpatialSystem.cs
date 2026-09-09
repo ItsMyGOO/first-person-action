@@ -19,15 +19,17 @@ public partial class SpatialSystem : Node
         {
             if (node is SpatialAgent agent && !agent.SpatialExempt)
             {
-                _bodies.Add(new SpatialBody
-                {
-                    Agent = agent,
-                    Position = agent.ReadPosition(),
-                    Radius = agent.Radius,
-                    GameplayMass = agent.GameplayMass,
-                    PushResistance = agent.PushResistance,
-                    MovementForce = agent.CurrentMovementForce,
-                });
+                _bodies.Add(
+                    new SpatialBody
+                    {
+                        Agent = agent,
+                        Position = agent.ReadPosition(),
+                        Radius = agent.Radius,
+                        GameplayMass = agent.GameplayMass,
+                        PushResistance = agent.PushResistance,
+                        MovementForce = agent.CurrentMovementForce,
+                    }
+                );
             }
         }
 

@@ -41,7 +41,12 @@ public class ForcedMovementTests
     {
         var fm = ForcedMovement.Linear(new Vector3(0, 0, -1), 6f, 0.5f, ForcedMovementEase.Smooth);
         Vector3 firstFrame = fm.Tick(1f / 60f);
-        var fmLinear = ForcedMovement.Linear(new Vector3(0, 0, -1), 6f, 0.5f, ForcedMovementEase.Linear);
+        var fmLinear = ForcedMovement.Linear(
+            new Vector3(0, 0, -1),
+            6f,
+            0.5f,
+            ForcedMovementEase.Linear
+        );
         Vector3 linearFirst = fmLinear.Tick(1f / 60f);
         Assert.True(firstFrame.Length() < linearFirst.Length());
     }
@@ -78,12 +83,22 @@ public class AbilityTests
         Vector3 IAbilityContext.BodyPosition => Position;
         Vector3 IAbilityContext.ForwardFlat => Forward;
         bool IAbilityContext.IsOnFloor => OnFloor;
-        float IAbilityContext.CurrentMovementForce { get => MovementForce; set => MovementForce = value; }
+        float IAbilityContext.CurrentMovementForce
+        {
+            get => MovementForce;
+            set => MovementForce = value;
+        }
+
         void IAbilityContext.RequestForcedMovement(ForcedMovement movement) => Requested = movement;
+
         void IAbilityContext.CancelForcedMovement() => Requested = null;
+
         void IAbilityContext.LaunchUp(float velocityY) => LaunchedY = velocityY;
+
         void IAbilityContext.SetSuperArmor(bool enabled) => SuperArmor = enabled;
+
         List<ICombatTarget> IAbilityContext.QueryTargets() => Targets;
+
         void IAbilityContext.NotifyHitLanded(int hitCount) => HitLandedNotifications++;
     }
 
@@ -113,7 +128,7 @@ public class AbilityTests
         Assert.True(ability.TryCast(ctx));
         ability.Update(0.30f, ctx); // 前摇 0.15 + 主动 0.15
         ability.Update(0.30f, ctx); // 推进到后摇中
-        Assert.Equal(1, target.HitCount);           // 只结算一次
+        Assert.Equal(1, target.HitCount); // 只结算一次
         Assert.Equal(1, ctx.HitLandedNotifications);
 
         ability.Update(0.40f, ctx); // 后摇结束
@@ -130,12 +145,12 @@ public class AbilityTests
 
         Assert.True(ability.TryCast(ctx));
         ability.Update(0.1f, ctx);
-        Assert.Equal(def.PushForce, ctx.MovementForce);   // 冲刺期间推力拉满
+        Assert.Equal(def.PushForce, ctx.MovementForce); // 冲刺期间推力拉满
         Assert.True(ctx.SuperArmor);
         Assert.NotNull(ctx.Requested);
 
         ability.Update(def.MoveDuration, ctx);
-        Assert.False(ability.IsCasting);                  // 冲刺结束（推力由控制器恢复）
+        Assert.False(ability.IsCasting); // 冲刺结束（推力由控制器恢复）
     }
 
     [Fact]
@@ -148,14 +163,14 @@ public class AbilityTests
         SkillDefinition def = Def(SkillKind.LeapSlam);
 
         Assert.True(ability.TryCast(ctx));
-        Assert.True(ctx.LaunchedY > 0);                   // 起跳
+        Assert.True(ctx.LaunchedY > 0); // 起跳
         ctx.OnFloor = false;
         ability.Update(def.MoveDuration, ctx);
-        Assert.Equal(0, target.HitCount);                 // 空中不结算
+        Assert.Equal(0, target.HitCount); // 空中不结算
         ctx.OnFloor = true;
         ability.Update(0.05f, ctx);
         Assert.Equal(1, target.HitCount);
-        Assert.False(ctx.SuperArmor);                     // 落地后霸体解除
+        Assert.False(ctx.SuperArmor); // 落地后霸体解除
         Assert.False(ability.IsCasting);
     }
 
