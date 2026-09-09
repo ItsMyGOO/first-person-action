@@ -24,6 +24,7 @@ public partial class CombatSmokeTestRunner : Node
         await HeavyBlockPhase();
         await ArcherPhase();
         await ArrowDirectionPhase();
+        await KeybindPhase();
 
         GD.Print(_failures == 0 ? "[SMOKE] 全部通过" : $"[SMOKE] {_failures} 项失败");
         GetTree().Quit(_failures == 0 ? 0 : 1);
@@ -217,6 +218,38 @@ public partial class CombatSmokeTestRunner : Node
         Check(
             hp.CurrentHealth == before - 6f,
             $"yaw 180° 后快速箭命中身后木桩：HP {before} -> {hp.CurrentHealth}"
+        );
+
+        await EndPhase(main);
+    }
+
+    /// <summary>改键底层（M4 §3）：运行时 Rebind 后，新物理键沿可施放技能并持久化到
+    /// user://keybinds.cfg。必须注入真实 InputEventKey——Input.ActionPress 走动作层，
+    /// 绕过 InputMap，验证不了改键。</summary>
+    private async Task KeybindPhase()
+    {
+        (Node main, Player player) = await StartPhase("res://Game/Config/Characters/Warrior.tres");
+        var keybinds = Core.KeybindManager.Instance!;
+        keybinds.ResetToDefaults(); // 从确定的默认状态开始
+
+        keybinds.Rebind("skill_1", Key.F);
+        keybinds.Save();
+        Check(
+            FileAccess.FileExists("user://keybinds.cfg"),
+            "Rebind+Save 后 user://keybinds.cfg 已持久化"
+        );
+
+        Input.ActionRelease("skill_1");
+        Input.ParseInputEvent(new InputEventKey { PhysicalKeycode = Key.F, Pressed = true });
+        await Frames(5);
+        Check(player.IsCastingSkill, "重绑后按新键 F 释放 skill_1（跳劈）");
+        Input.ParseInputEvent(new InputEventKey { PhysicalKeycode = Key.F, Pressed = false });
+        Input.ActionRelease("skill_1");
+        await Frames(90); // 等跳劈完整收尾
+        keybinds.ResetToDefaults(); // 还原默认键位并清除持久化，不影响后续运行
+        Check(
+            !FileAccess.FileExists("user://keybinds.cfg"),
+            "ResetToDefaults 后 keybinds.cfg 已删除"
         );
 
         await EndPhase(main);

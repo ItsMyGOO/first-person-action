@@ -103,7 +103,7 @@ Game/Gameplay/Enemies/
 
 - [x] **T1 箭矢修复**：Spawn 挂场景根 + GlobalPosition 积分 + collisionMask 参数 + 转身 180° 回归冒烟
 - [x] **T2 玩家受击路径**：Player 实现 ICombatTarget + HUD 玩家血条 + 死亡重载场景
-- [ ] **T3 改键底层**：默认键改 1/2/3 + KeybindManager(autoload) + 持久化 + 重绑冒烟
+- [x] **T3 改键底层**：默认键改 1/2/3 + KeybindManager(autoload) + 持久化 + 重绑冒烟
 - [ ] **T4 敌人基类+低级兵**：EnemyAI 基类（从 DummyEnemy 上移共性）+ AttackCycle（TDD）+ SurroundSlotAssigner（TDD）+ SwarmSoldier + EnemyGroup 激活
 - [ ] **T5 远程兵**：KiteBand（TDD）+ RangedEnemy + 瞄准预告线 + 敌方箭（掩码无友伤）+ 玩家掉血冒烟
 - [ ] **T6 护卫+编组**：GuardEnemy 跟随/leash/推不动（PushResistance 9999）+ Main.tscn 默认编组接线 + 编组冒烟
