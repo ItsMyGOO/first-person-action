@@ -15,7 +15,7 @@ namespace GodotGameTemplate.Combat;
 /// 技能经 IAbilityContext 驱动（Ability 纯逻辑、可单测）；
 /// 技能产生的强制位移统一进入移动管线，位移完成后仍受空间解析约束。
 /// </summary>
-public partial class Player : CharacterBody3D, IAbilityContext
+public partial class Player : CharacterBody3D, IAbilityContext, ICombatTarget
 {
     [Export]
     public float MouseSensitivity = CombatTuning.MouseSensitivity;
@@ -86,6 +86,10 @@ public partial class Player : CharacterBody3D, IAbilityContext
     public bool IsInvulnerable =>
         _action == ActionState.Dodge && _dodgeElapsed < CombatTuning.DodgeInvulnerableSeconds;
 
+    /// <summary>血量比例（0~1），HUD 玩家血条只读。</summary>
+    public float Health01 =>
+        _health.MaxHealth > 0f ? _health.CurrentHealth / _health.MaxHealth : 0f;
+
     public override void _Ready()
     {
         _def = Definition ?? GameSession.Instance!.EnsureSelected();
@@ -103,11 +107,16 @@ public partial class Player : CharacterBody3D, IAbilityContext
         _agent = GetNode<SpatialAgent>("SpatialAgent");
         _health = GetNode<HealthComponent>("HealthComponent");
         _health.Init(_def.MaxHealth);
+        _health.Died += OnDied;
         Input.MouseMode = Input.MouseModeEnum.Captured;
         // 本地视角隐藏完整身体（联机时按归属控制，队友视角可见——规格第 3 节）
         GetNode<MeshInstance3D>("BodyVisual").Visible = false;
         AddToGroup(CombatTuning.PlayerGroup);
+        AddToGroup(CombatTuning.TargetGroup); // 敌人 AI 与敌方投射物需要找到玩家
     }
+
+    /// <summary>v1 玩家死亡：简单重载当前场景（受击状态机/死亡表现留到打磨期）。</summary>
+    private void OnDied() => Callable.From(() => GetTree().ReloadCurrentScene()).CallDeferred();
 
     public override void _UnhandledInput(InputEvent @event)
     {
@@ -574,4 +583,12 @@ public partial class Player : CharacterBody3D, IAbilityContext
 
     void IAbilityContext.NotifyHitLanded(int hitCount) =>
         HitstopManager.Request(CombatTuning.HitstopMs);
+
+    // —— ICombatTarget（敌方近战/箭矢的受击面；v1 只扣血，无硬直/击退） ——
+
+    Vector3 ICombatTarget.Center => GlobalPosition + Vector3.Up * 1.2f;
+
+    bool ICombatTarget.CanBeHit => !_health.IsDead;
+
+    void ICombatTarget.ApplyHit(in HitData hit) => _health.ApplyDamage(hit.Damage);
 }

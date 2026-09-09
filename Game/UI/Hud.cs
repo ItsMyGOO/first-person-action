@@ -10,6 +10,7 @@ namespace GodotGameTemplate.UI;
 public partial class Hud : CanvasLayer
 {
     private ProgressBar _chargeBar = null!;
+    private ProgressBar _playerBar = null!;
     private ColorRect _crosshair = null!;
     private Combat.Player? _player;
 
@@ -17,6 +18,7 @@ public partial class Hud : CanvasLayer
     {
         _chargeBar = GetNode<ProgressBar>("ChargeBar");
         _crosshair = GetNode<ColorRect>("Crosshair");
+        _playerBar = GetNode<ProgressBar>("PlayerBar");
     }
 
     public override void _Process(double delta)
@@ -26,11 +28,14 @@ public partial class Hud : CanvasLayer
         {
             _crosshair.Visible = false;
             _chargeBar.Visible = false;
+            _playerBar.Visible = false;
             return;
         }
 
         _crosshair.Visible = _player.ShowCrosshair;
         _chargeBar.Visible = _player.IsCharging;
         _chargeBar.Value = _player.ChargeProgress01 * 100.0;
+        _playerBar.Visible = true; // 常驻玩家血条（M4 §2）
+        _playerBar.Value = _player.Health01 * 100.0;
     }
 }
