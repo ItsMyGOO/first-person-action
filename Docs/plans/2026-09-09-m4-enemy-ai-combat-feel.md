@@ -107,7 +107,7 @@ Game/Gameplay/Enemies/
 - [x] **T4 敌人基类+低级兵**：EnemyAI 基类（从 DummyEnemy 上移共性）+ AttackCycle（TDD）+ SurroundSlotAssigner（TDD）+ SwarmSoldier + EnemyGroup 激活
 - [x] **T5 远程兵**：KiteBand（TDD）+ RangedEnemy + 瞄准预告线 + 敌方箭（掩码无友伤）+ 玩家掉血冒烟
 - [x] **T6 护卫+编组**：GuardEnemy 跟随/leash/推不动（PushResistance 9999）+ Main.tscn 默认编组接线 + 编组冒烟
-- [ ] **T7 手感打磨**：状态/事件暴露 + CameraFeel（FOV/震动/viewmodel 姿态）+ ShockwaveRing + LeapLanded hit-stop 110ms
+- [x] **T7 手感打磨**：状态/事件暴露 + CameraFeel（FOV/震动/viewmodel 姿态）+ ShockwaveRing + LeapLanded hit-stop 110ms
 - [ ] **T8 收尾**：全量单测+冒烟、csharpier、规格里程碑更新（M5 修订记录：敌人AI+手感打磨完成，处决/刺客顺延）、合并 main
 
 ## 7. 验收标准

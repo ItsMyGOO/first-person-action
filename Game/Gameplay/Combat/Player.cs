@@ -75,6 +75,20 @@ public partial class Player : CharacterBody3D, IAbilityContext, ICombatTarget
 
     public bool IsCastingSkill => _action == ActionState.Skill;
 
+    /// <summary>冲锋冲刺进行中（表现层 CameraFeel/冒烟断言用——M4 §5）。</summary>
+    public bool IsChargeDashing => _activeAbility is ChargeAbility { IsCasting: true };
+
+    /// <summary>跳劈滞空中（起跳后、落地结算前）。</summary>
+    public bool IsLeapAirborne => _activeAbility is LeapSlamAbility { IsCasting: true };
+
+    /// <summary>瞄准混合比例 0~1（CameraFeel 接管 FOV/肩视后仍只读）。</summary>
+    public float AimBlend01 => _aimBlend;
+
+    // —— 表现层事件（M4 §5：CameraFeel 等订阅，不回写模拟） ——
+    public event System.Action<SkillKind>? SkillStarted;
+    public event System.Action<SkillKind>? SkillEnded;
+    public event System.Action? LeapLanded;
+
     public bool IsAiming => _action is ActionState.Aim or ActionState.AimCharge;
 
     public bool IsCharging => _charge.IsCharging;
@@ -144,15 +158,9 @@ public partial class Player : CharacterBody3D, IAbilityContext, ICombatTarget
         Rotation = new Vector3(0f, _yaw, 0f);
         _head.Rotation = new Vector3(_pitch, 0f, 0f);
 
-        // 瞄准表现（表现层只读状态，规格第 1 节）：FOV 收缩 + 肩视偏移
+        // 瞄准表现状态仍在此更新；FOV/肩视偏移/震动已移交 CameraFeel（M4 §5）
         float aimTarget = IsAiming ? 1f : 0f;
         _aimBlend = Mathf.MoveToward(_aimBlend, aimTarget, CombatTuning.AimBlendSpeed * dt);
-        _camera.Fov = Mathf.Lerp(CombatTuning.BaseFov, CombatTuning.AimFov, _aimBlend);
-        _camera.Position = new Vector3(
-            Mathf.Lerp(0f, CombatTuning.AimShoulderX, _aimBlend),
-            0f,
-            0f
-        );
     }
 
     public override void _PhysicsProcess(double delta)
@@ -330,12 +338,20 @@ public partial class Player : CharacterBody3D, IAbilityContext, ICombatTarget
 
         _activeAbility = _abilities[index];
         _action = ActionState.Skill;
-        _activeAbility.TryCast(this);
+        if (_activeAbility.TryCast(this))
+        {
+            SkillStarted?.Invoke(_activeAbility.Def.Kind);
+        }
     }
 
     /// <summary>施法结束的统一收尾：恢复推力、解除霸体、清位移、回空闲。</summary>
     private void EndAbility()
     {
+        if (_activeAbility != null)
+        {
+            SkillEnded?.Invoke(_activeAbility.Def.Kind);
+        }
+
         _activeAbility = null;
         _forced = null;
         _agent.CurrentMovementForce = _agent.MovementForce;
@@ -532,12 +548,16 @@ public partial class Player : CharacterBody3D, IAbilityContext, ICombatTarget
         MoveAndSlide();
     }
 
-    /// <summary>viewmodel 占位动画：前摇后拉、主动段前捅、后摇回位。动画资产到位后由 AnimationTree 接管。</summary>
+    /// <summary>viewmodel 占位动画：前摇后拉、主动段前捅、后摇回位；冲锋期间后拉姿态（M4 §5）。动画资产到位后由 AnimationTree 接管。</summary>
     private void TickViewModel(float dt)
     {
         Vector3 rest = new Vector3(0.28f, -0.26f, -0.55f);
         Vector3 target = rest;
-        if (_combo.Phase == ComboStagePhase.Startup)
+        if (IsChargeDashing)
+        {
+            target = new Vector3(rest.X, rest.Y, rest.Z + 0.15f); // 冲锋 viewmodel 后拉
+        }
+        else if (_combo.Phase == ComboStagePhase.Startup)
         {
             target = new Vector3(rest.X, rest.Y, rest.Z + 0.12f);
         }
@@ -582,7 +602,13 @@ public partial class Player : CharacterBody3D, IAbilityContext, ICombatTarget
     List<ICombatTarget> IAbilityContext.QueryTargets() => FindTargets();
 
     void IAbilityContext.NotifyHitLanded(int hitCount) =>
-        HitstopManager.Request(CombatTuning.HitstopMs);
+        HitstopManager.Request(_activeAbility?.Def.HitstopMs ?? CombatTuning.HitstopMs);
+
+    void IAbilityContext.NotifyLeapLanded()
+    {
+        LeapLanded?.Invoke();
+        HitstopManager.Request(_activeAbility?.Def.HitstopMs ?? CombatTuning.HitstopMs);
+    }
 
     // —— ICombatTarget（敌方近战/箭矢的受击面；v1 只扣血，无硬直/击退） ——
     // 注：玩家原点在胶囊几何中心（落地后 GlobalPosition.y≈0.9），上偏 0.3m = 世界胸口高度 1.2m

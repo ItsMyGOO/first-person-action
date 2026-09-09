@@ -116,4 +116,13 @@ public static class CombatTuning
     public const float GuardAttackDamage = 12f;
     public const float GuardAttackPoiseDamage = 15f;
     public const float GuardAttackKnockback = 3f;
+
+    // —— 手感打磨（M4 §5，纯表现层）——
+    public const float ChargeFovKick = 10f; // 冲锋 FOV 拉伸峰值
+    public const float ChargeShakeAmplitude = 0.05f; // 冲锋高频小幅抖动
+    public const float LeapFovDrop = 6f; // 起跳/滞空 FOV 收束
+    public const float LeapKickPitchRad = 0.06f; // 起跳相机上仰小踢
+    public const float LeapLandShake = 0.4f; // 落地震动爆发幅度
+    public const float LeapLandShakeDecaySeconds = 0.35f; // 落地震动衰减时长
+    public const float LandSinkMeters = 0.15f; // 落地相地下沉
 }

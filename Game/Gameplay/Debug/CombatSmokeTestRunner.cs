@@ -27,6 +27,7 @@ public partial class CombatSmokeTestRunner : Node
         await KeybindPhase();
         await RangedEnemyPhase();
         await EnemyGroupPhase();
+        await FeelPhase();
 
         GD.Print(_failures == 0 ? "[SMOKE] 全部通过" : $"[SMOKE] {_failures} 项失败");
         GetTree().Quit(_failures == 0 ? 0 : 1);
@@ -338,6 +339,38 @@ public partial class CombatSmokeTestRunner : Node
 
         await EndPhase(main);
     }
+
+    /// <summary>手感打磨冒烟（M4 §5，轻量断事件与节点）：冲锋 IsChargeDashing 真→假；
+    /// 跳劈落地触发 LeapLanded、ShockwaveRing 出现且 0.6s 内自毁。</summary>
+    private async Task FeelPhase()
+    {
+        (Node main, Player player) = await StartPhase("res://Game/Config/Characters/Warrior.tres");
+
+        // 冲锋：状态标志真→假
+        PressRelease("skill_2");
+        await Frames(5);
+        Check(player.IsChargeDashing, "冲锋期间 IsChargeDashing 为真");
+        await Frames(40);
+        Check(!player.IsChargeDashing, "冲锋结束后 IsChargeDashing 转假");
+        await Frames(30); // 等 CD 不影响后续（skill_1 CD 9s 独立）
+
+        // 跳劈：LeapLanded 事件 + ShockwaveRing 生成与自毁
+        bool leapLanded = false;
+        player.LeapLanded += () => leapLanded = true;
+        int ringsBefore = CountShockwaves();
+        PressRelease("skill_1");
+        await Frames(80); // 起跳 0.5s 位移 + 落地
+        Check(leapLanded, "跳劈落地触发 LeapLanded");
+        int ringsAfter = CountShockwaves();
+        Check(ringsAfter > ringsBefore, $"落地生成 ShockwaveRing（{ringsAfter - ringsBefore} 个）");
+        await Frames(50); // 0.4s 生命 + 余量
+        Check(CountShockwaves() == ringsBefore, "ShockwaveRing 0.6s 内自毁");
+
+        await EndPhase(main);
+    }
+
+    private int CountShockwaves() =>
+        GetTree().CurrentScene!.FindChildren("ShockwaveRing*", "", true, false).Count;
 
     // —— 工具 ——
 
