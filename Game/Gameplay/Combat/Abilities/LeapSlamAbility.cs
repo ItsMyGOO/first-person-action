@@ -79,6 +79,7 @@ public sealed class LeapSlamAbility : Ability
             ctx.NotifyHitLanded(hits.Count);
         }
 
+        ctx.NotifyLeapLanded(); // 落地反馈（震动/下沉/110ms 顿帧/冲击波环）与命中与否无关
         ctx.SetSuperArmor(false);
         EndCast();
     }

@@ -33,4 +33,7 @@ public interface IAbilityContext
 
     /// <summary>本次结算有命中（控制器触发 hit-stop 等反馈）。</summary>
     void NotifyHitLanded(int hitCount);
+
+    /// <summary>跳劈落地瞬间（控制器触发落地反馈：震动/下沉/顿帧/冲击波环——M4 §5）。</summary>
+    void NotifyLeapLanded();
 }

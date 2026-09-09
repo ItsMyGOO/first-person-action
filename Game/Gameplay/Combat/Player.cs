@@ -15,7 +15,7 @@ namespace GodotGameTemplate.Combat;
 /// 技能经 IAbilityContext 驱动（Ability 纯逻辑、可单测）；
 /// 技能产生的强制位移统一进入移动管线，位移完成后仍受空间解析约束。
 /// </summary>
-public partial class Player : CharacterBody3D, IAbilityContext
+public partial class Player : CharacterBody3D, IAbilityContext, ICombatTarget
 {
     [Export]
     public float MouseSensitivity = CombatTuning.MouseSensitivity;
@@ -75,6 +75,20 @@ public partial class Player : CharacterBody3D, IAbilityContext
 
     public bool IsCastingSkill => _action == ActionState.Skill;
 
+    /// <summary>冲锋冲刺进行中（表现层 CameraFeel/冒烟断言用——M4 §5）。</summary>
+    public bool IsChargeDashing => _activeAbility is ChargeAbility { IsCasting: true };
+
+    /// <summary>跳劈滞空中（起跳后、落地结算前）。</summary>
+    public bool IsLeapAirborne => _activeAbility is LeapSlamAbility { IsCasting: true };
+
+    /// <summary>瞄准混合比例 0~1（CameraFeel 接管 FOV/肩视后仍只读）。</summary>
+    public float AimBlend01 => _aimBlend;
+
+    // —— 表现层事件（M4 §5：CameraFeel 等订阅，不回写模拟） ——
+    public event System.Action<SkillKind>? SkillStarted;
+    public event System.Action<SkillKind>? SkillEnded;
+    public event System.Action? LeapLanded;
+
     public bool IsAiming => _action is ActionState.Aim or ActionState.AimCharge;
 
     public bool IsCharging => _charge.IsCharging;
@@ -85,6 +99,10 @@ public partial class Player : CharacterBody3D, IAbilityContext
 
     public bool IsInvulnerable =>
         _action == ActionState.Dodge && _dodgeElapsed < CombatTuning.DodgeInvulnerableSeconds;
+
+    /// <summary>血量比例（0~1），HUD 玩家血条只读。</summary>
+    public float Health01 =>
+        _health.MaxHealth > 0f ? _health.CurrentHealth / _health.MaxHealth : 0f;
 
     public override void _Ready()
     {
@@ -103,11 +121,16 @@ public partial class Player : CharacterBody3D, IAbilityContext
         _agent = GetNode<SpatialAgent>("SpatialAgent");
         _health = GetNode<HealthComponent>("HealthComponent");
         _health.Init(_def.MaxHealth);
+        _health.Died += OnDied;
         Input.MouseMode = Input.MouseModeEnum.Captured;
         // 本地视角隐藏完整身体（联机时按归属控制，队友视角可见——规格第 3 节）
         GetNode<MeshInstance3D>("BodyVisual").Visible = false;
         AddToGroup(CombatTuning.PlayerGroup);
+        AddToGroup(CombatTuning.TargetGroup); // 敌人 AI 与敌方投射物需要找到玩家
     }
+
+    /// <summary>v1 玩家死亡：简单重载当前场景（受击状态机/死亡表现留到打磨期）。</summary>
+    private void OnDied() => Callable.From(() => GetTree().ReloadCurrentScene()).CallDeferred();
 
     public override void _UnhandledInput(InputEvent @event)
     {
@@ -135,15 +158,9 @@ public partial class Player : CharacterBody3D, IAbilityContext
         Rotation = new Vector3(0f, _yaw, 0f);
         _head.Rotation = new Vector3(_pitch, 0f, 0f);
 
-        // 瞄准表现（表现层只读状态，规格第 1 节）：FOV 收缩 + 肩视偏移
+        // 瞄准表现状态仍在此更新；FOV/肩视偏移/震动已移交 CameraFeel（M4 §5）
         float aimTarget = IsAiming ? 1f : 0f;
         _aimBlend = Mathf.MoveToward(_aimBlend, aimTarget, CombatTuning.AimBlendSpeed * dt);
-        _camera.Fov = Mathf.Lerp(CombatTuning.BaseFov, CombatTuning.AimFov, _aimBlend);
-        _camera.Position = new Vector3(
-            Mathf.Lerp(0f, CombatTuning.AimShoulderX, _aimBlend),
-            0f,
-            0f
-        );
     }
 
     public override void _PhysicsProcess(double delta)
@@ -321,12 +338,20 @@ public partial class Player : CharacterBody3D, IAbilityContext
 
         _activeAbility = _abilities[index];
         _action = ActionState.Skill;
-        _activeAbility.TryCast(this);
+        if (_activeAbility.TryCast(this))
+        {
+            SkillStarted?.Invoke(_activeAbility.Def.Kind);
+        }
     }
 
     /// <summary>施法结束的统一收尾：恢复推力、解除霸体、清位移、回空闲。</summary>
     private void EndAbility()
     {
+        if (_activeAbility != null)
+        {
+            SkillEnded?.Invoke(_activeAbility.Def.Kind);
+        }
+
         _activeAbility = null;
         _forced = null;
         _agent.CurrentMovementForce = _agent.MovementForce;
@@ -523,12 +548,16 @@ public partial class Player : CharacterBody3D, IAbilityContext
         MoveAndSlide();
     }
 
-    /// <summary>viewmodel 占位动画：前摇后拉、主动段前捅、后摇回位。动画资产到位后由 AnimationTree 接管。</summary>
+    /// <summary>viewmodel 占位动画：前摇后拉、主动段前捅、后摇回位；冲锋期间后拉姿态（M4 §5）。动画资产到位后由 AnimationTree 接管。</summary>
     private void TickViewModel(float dt)
     {
         Vector3 rest = new Vector3(0.28f, -0.26f, -0.55f);
         Vector3 target = rest;
-        if (_combo.Phase == ComboStagePhase.Startup)
+        if (IsChargeDashing)
+        {
+            target = new Vector3(rest.X, rest.Y, rest.Z + 0.15f); // 冲锋 viewmodel 后拉
+        }
+        else if (_combo.Phase == ComboStagePhase.Startup)
         {
             target = new Vector3(rest.X, rest.Y, rest.Z + 0.12f);
         }
@@ -573,5 +602,20 @@ public partial class Player : CharacterBody3D, IAbilityContext
     List<ICombatTarget> IAbilityContext.QueryTargets() => FindTargets();
 
     void IAbilityContext.NotifyHitLanded(int hitCount) =>
-        HitstopManager.Request(CombatTuning.HitstopMs);
+        HitstopManager.Request(_activeAbility?.Def.HitstopMs ?? CombatTuning.HitstopMs);
+
+    void IAbilityContext.NotifyLeapLanded()
+    {
+        LeapLanded?.Invoke();
+        HitstopManager.Request(_activeAbility?.Def.HitstopMs ?? CombatTuning.HitstopMs);
+    }
+
+    // —— ICombatTarget（敌方近战/箭矢的受击面；v1 只扣血，无硬直/击退） ——
+    // 注：玩家原点在胶囊几何中心（落地后 GlobalPosition.y≈0.9），上偏 0.3m = 世界胸口高度 1.2m
+
+    Vector3 ICombatTarget.Center => GlobalPosition + Vector3.Up * 0.3f;
+
+    bool ICombatTarget.CanBeHit => !_health.IsDead;
+
+    void ICombatTarget.ApplyHit(in HitData hit) => _health.ApplyDamage(hit.Damage);
 }

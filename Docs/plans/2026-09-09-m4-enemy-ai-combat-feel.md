@@ -101,14 +101,14 @@ Game/Gameplay/Enemies/
 
 ## 6. 任务序（每任务构建+测试+提交，最后合并 main）
 
-- [ ] **T1 箭矢修复**：Spawn 挂场景根 + GlobalPosition 积分 + collisionMask 参数 + 转身 180° 回归冒烟
-- [ ] **T2 玩家受击路径**：Player 实现 ICombatTarget + HUD 玩家血条 + 死亡重载场景
-- [ ] **T3 改键底层**：默认键改 1/2/3 + KeybindManager(autoload) + 持久化 + 重绑冒烟
-- [ ] **T4 敌人基类+低级兵**：EnemyAI 基类（从 DummyEnemy 上移共性）+ AttackCycle（TDD）+ SurroundSlotAssigner（TDD）+ SwarmSoldier + EnemyGroup 激活
-- [ ] **T5 远程兵**：KiteBand（TDD）+ RangedEnemy + 瞄准预告线 + 敌方箭（掩码无友伤）+ 玩家掉血冒烟
-- [ ] **T6 护卫+编组**：GuardEnemy 跟随/leash/推不动（PushResistance 9999）+ Main.tscn 默认编组接线 + 编组冒烟
-- [ ] **T7 手感打磨**：状态/事件暴露 + CameraFeel（FOV/震动/viewmodel 姿态）+ ShockwaveRing + LeapLanded hit-stop 110ms
-- [ ] **T8 收尾**：全量单测+冒烟、csharpier、规格里程碑更新（M5 修订记录：敌人AI+手感打磨完成，处决/刺客顺延）、合并 main
+- [x] **T1 箭矢修复**：Spawn 挂场景根 + GlobalPosition 积分 + collisionMask 参数 + 转身 180° 回归冒烟
+- [x] **T2 玩家受击路径**：Player 实现 ICombatTarget + HUD 玩家血条 + 死亡重载场景
+- [x] **T3 改键底层**：默认键改 1/2/3 + KeybindManager(autoload) + 持久化 + 重绑冒烟
+- [x] **T4 敌人基类+低级兵**：EnemyAI 基类（从 DummyEnemy 上移共性）+ AttackCycle（TDD）+ SurroundSlotAssigner（TDD）+ SwarmSoldier + EnemyGroup 激活
+- [x] **T5 远程兵**：KiteBand（TDD）+ RangedEnemy + 瞄准预告线 + 敌方箭（掩码无友伤）+ 玩家掉血冒烟
+- [x] **T6 护卫+编组**：GuardEnemy 跟随/leash/推不动（PushResistance 9999）+ Main.tscn 默认编组接线 + 编组冒烟
+- [x] **T7 手感打磨**：状态/事件暴露 + CameraFeel（FOV/震动/viewmodel 姿态）+ ShockwaveRing + LeapLanded hit-stop 110ms
+- [x] **T8 收尾**：全量单测+冒烟、csharpier、规格里程碑更新（M5 修订记录：敌人AI+手感打磨完成，处决/刺客顺延）、合并 main
 
 ## 7. 验收标准
 
@@ -125,3 +125,19 @@ Game/Gameplay/Enemies/
 - 敌人受击外的玩家受击反馈（受击闪红/方向指示留到打磨期）；
 - 改键设置界面（仅底层 API）、敌人动画资产（全部占位表现）；
 - 多编组协同/阵型阵形（阵型 MVP 仍在此之后）。
+
+---
+
+## 执行记录（2026-09-09 夜间自动化执行）
+
+- **起止时间**：2026-09-09 23:00 – 2026-09-10 00:0x（单次无人值守会话）
+- **结果**：✅ 全部完成。T1–T8 共 8 个任务全部落地，每任务独立提交（fix/projectile、feat/player、feat/input、feat/enemy×3、feat/feel、docs）。
+- **验证门槛**：`dotnet build` 0 错误 0 警告；xUnit 42→59 全过；无头冒烟 17→35 项全过（退出码 0）。
+- **执行要点**：
+  - 箭矢方向修复（挂场景根 + GlobalPosition 积分）+ yaw 180° 回归冒烟一次通过；
+  - KeybindManager 重绑冒烟采用真实 `InputEventKey` 物理键沿注入（`Input.ActionPress` 走动作层验证不了改键）；
+  - 新增 `IAbilityContext.NotifyLeapLanded()`，测试假件同步更新；hit-stop 改为 `SkillDefinition.HitstopMs`（跳劈 110ms）；
+  - 玩家 `ICombatTarget.Center` 落点修正为世界胸口高度（原点为胶囊几何中心，+1.2m 会高于胶囊顶导致敌箭从头顶飞过）；
+  - viewmodel 冲锋后拉由 Player 表现层统一写入（单写者原则，避免与连段动画互相覆盖）。
+- **环境备注**：无头冒烟命令需加大 `--quit-after`（无头模式主循环迭代与物理帧不同步，默认值会在套件完成前截断）；新增 .cs/.tscn 后先 `--headless --import` 再跑冒烟更稳。
+- **遗留**：Area3D（箭矢）对静态体（墙）的碰撞检测不可靠，属引擎层既有行为，本计划未涉及（验收项不含箭撞墙）。

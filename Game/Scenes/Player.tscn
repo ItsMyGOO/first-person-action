@@ -1,8 +1,9 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://Game/Gameplay/Combat/Player.cs" id="1_player"]
 [ext_resource type="Script" path="res://Game/Gameplay/Spatial/SpatialAgent.cs" id="2_spatial"]
 [ext_resource type="Script" path="res://Game/Gameplay/Combat/HealthComponent.cs" id="3_health"]
+[ext_resource type="Script" path="res://Game/UI/CameraFeel.cs" id="4_feel"]
 
 [sub_resource type="CapsuleShape3D" id="cap_shape"]
 radius = 0.4
@@ -46,3 +47,6 @@ near = 0.05
 [node name="ViewModelArm" type="MeshInstance3D" parent="Head/Camera3D"]
 position = Vector3(0.28, -0.26, -0.55)
 mesh = SubResource("arm_mesh")
+
+[node name="CameraFeel" type="Node" parent="Head/Camera3D"]
+script = ExtResource("4_feel")

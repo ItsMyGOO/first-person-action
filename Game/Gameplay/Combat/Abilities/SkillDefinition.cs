@@ -44,4 +44,5 @@ public sealed class SkillDefinition
     // —— 其它 ——
     public bool InterruptsAim = true;
     public float ActiveMoveScale = 0.3f; // 施法期间移动输入保留比例
+    public int HitstopMs = 70; // 命中/落地顿帧（跳劈覆盖为 110，M4 §5）
 }

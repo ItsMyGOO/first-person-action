@@ -79,6 +79,7 @@ public class AbilityTests
         public float LaunchedY;
         public bool SuperArmor;
         public int HitLandedNotifications;
+        public int LeapLandedNotifications;
 
         Vector3 IAbilityContext.BodyPosition => Position;
         Vector3 IAbilityContext.ForwardFlat => Forward;
@@ -100,6 +101,8 @@ public class AbilityTests
         List<ICombatTarget> IAbilityContext.QueryTargets() => Targets;
 
         void IAbilityContext.NotifyHitLanded(int hitCount) => HitLandedNotifications++;
+
+        void IAbilityContext.NotifyLeapLanded() => LeapLandedNotifications++;
     }
 
     private static SkillDefinition Def(SkillKind kind) => AbilityFactory.CreateDefinition(kind);
@@ -170,6 +173,7 @@ public class AbilityTests
         ctx.OnFloor = true;
         ability.Update(0.05f, ctx);
         Assert.Equal(1, target.HitCount);
+        Assert.Equal(1, ctx.LeapLandedNotifications); // 落地反馈触发一次
         Assert.False(ctx.SuperArmor); // 落地后霸体解除
         Assert.False(ability.IsCasting);
     }

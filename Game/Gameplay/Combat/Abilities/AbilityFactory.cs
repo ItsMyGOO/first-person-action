@@ -60,6 +60,7 @@ public static class AbilityFactory
                 HalfAngleDeg = 180f,
                 SuperArmor = true,
                 ActiveMoveScale = 0f,
+                HitstopMs = 110, // 跳劈专属落地顿帧（M4 §5）
             },
             SkillKind.Backstep => new SkillDefinition
             {

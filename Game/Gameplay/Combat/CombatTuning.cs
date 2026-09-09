@@ -84,4 +84,45 @@ public static class CombatTuning
     public const float AimBlendSpeed = 10f; // 瞄准表现过渡速度
     public const float AimSpeedScale = 0.5f; // 瞄准时移速比例
     public const float ArrowGravity = 4f; // 未满级箭矢下坠（米/秒²）
+
+    // —— 敌人 AI（M4）——
+    public const float EnemyGroupActivateRadius = 12f; // 编组聚合激活：玩家接近半径
+    public const float SlotReassignInterval = 0.4f; // 环绕槽位重算间隔
+    public const float SwarmMoveSpeed = 3.2f; // 低级兵移速
+    public const float SwarmAttackRange = 1.7f; // 低级兵进入攻击周期的高速距离
+    public const float SwarmAttackHalfAngleDeg = 60f; // 低级兵攻击锥形半角
+    public const float SwarmAttackWindup = 0.5f; // 低级兵前摇（预告）
+    public const float SwarmAttackCooldown = 1.2f; // 低级兵攻击冷却
+    public const float SwarmAttackDamage = 8f;
+    public const float SwarmAttackPoiseDamage = 10f;
+    public const float SwarmAttackKnockback = 2.5f;
+
+    // —— 远程敌人（M4，规格距离带）——
+    public const float RangedKiteNear = 7f; // < 近于此距离后退
+    public const float RangedKiteFar = 11f; // > 远于此距离接近
+    public const float RangedMoveSpeed = 2.6f;
+    public const float RangedAimSeconds = 0.7f; // 瞄准预告（红线）时长
+    public const float RangedAttackCooldown = 2.4f;
+
+    // —— 护卫敌人（M4）——
+    public const float GuardWingOffset = 1.2f; // 左右翼跟随偏移
+    public const float GuardEngageRange = 2.6f; // 玩家近身才转入攻击
+    public const float GuardLeashRange = 3.5f; // 玩家离开即回归跟随（leash 滞回）
+    public const float GuardMoveSpeed = 3.6f;
+    public const float GuardAttackRange = 2.0f;
+    public const float GuardAttackHalfAngleDeg = 60f;
+    public const float GuardAttackWindup = 0.45f;
+    public const float GuardAttackCooldown = 1.5f;
+    public const float GuardAttackDamage = 12f;
+    public const float GuardAttackPoiseDamage = 15f;
+    public const float GuardAttackKnockback = 3f;
+
+    // —— 手感打磨（M4 §5，纯表现层）——
+    public const float ChargeFovKick = 10f; // 冲锋 FOV 拉伸峰值
+    public const float ChargeShakeAmplitude = 0.05f; // 冲锋高频小幅抖动
+    public const float LeapFovDrop = 6f; // 起跳/滞空 FOV 收束
+    public const float LeapKickPitchRad = 0.06f; // 起跳相机上仰小踢
+    public const float LeapLandShake = 0.4f; // 落地震动爆发幅度
+    public const float LeapLandShakeDecaySeconds = 0.35f; // 落地震动衰减时长
+    public const float LandSinkMeters = 0.15f; // 落地相地下沉
 }
