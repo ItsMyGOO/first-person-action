@@ -1,6 +1,6 @@
-[gd_scene load_steps=11 format=3]
+[gd_scene load_steps=10 format=3]
 
-[ext_resource type="PackedScene" path="res://Game/Scenes/Player.tscn" id="1_player"]
+[ext_resource type="Script" path="res://Game/Scenes/Main.cs" id="0_main"]
 [ext_resource type="PackedScene" path="res://Game/Scenes/EnemyDummy.tscn" id="2_dummy"]
 [ext_resource type="Script" path="res://Game/Gameplay/Spatial/SpatialSystem.cs" id="3_spatial_system"]
 [ext_resource type="PackedScene" path="res://Game/Scenes/UI/Hud.tscn" id="4_hud"]
@@ -21,6 +21,10 @@ size = Vector3(40, 3, 1)
 albedo_color = Color(0.35, 0.38, 0.42, 1)
 
 [node name="Main" type="Node3D"]
+script = ExtResource("0_main")
+
+[node name="PlayerSpawn" type="Node3D" parent="."]
+position = Vector3(0, 0.2, 10)
 
 [node name="SpatialSystem" type="Node" parent="."]
 script = ExtResource("3_spatial_system")
@@ -76,9 +80,6 @@ mesh = SubResource("wall_mesh")
 
 [node name="Shape" type="CollisionShape3D" parent="WallWest"]
 shape = SubResource("wall_shape")
-
-[node name="Player" parent="." instance=ExtResource("1_player")]
-position = Vector3(0, 0.2, 10)
 
 [node name="Dummy1" parent="." instance=ExtResource("2_dummy")]
 position = Vector3(0, 0.2, -2)
