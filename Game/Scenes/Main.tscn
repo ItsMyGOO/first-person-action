@@ -4,6 +4,10 @@
 [ext_resource type="PackedScene" path="res://Game/Scenes/EnemyDummy.tscn" id="2_dummy"]
 [ext_resource type="Script" path="res://Game/Gameplay/Spatial/SpatialSystem.cs" id="3_spatial_system"]
 [ext_resource type="PackedScene" path="res://Game/Scenes/UI/Hud.tscn" id="4_hud"]
+[ext_resource type="PackedScene" path="res://Game/Scenes/RangedEnemy.tscn" id="5_ranged"]
+[ext_resource type="PackedScene" path="res://Game/Scenes/GuardEnemy.tscn" id="6_guard"]
+[ext_resource type="PackedScene" path="res://Game/Scenes/SwarmSoldier.tscn" id="7_swarm"]
+[ext_resource type="Script" path="res://Game/Gameplay/Enemies/EnemyGroup.cs" id="8_group"]
 
 [sub_resource type="PlaneMesh" id="floor_mesh"]
 size = Vector2(40, 40)
@@ -97,3 +101,32 @@ BodyMass = 800.0
 BodyPushResistance = 800.0
 
 [node name="Hud" parent="." instance=ExtResource("4_hud")]
+
+[node name="EnemyGroup" type="Node3D" parent="."]
+position = Vector3(0, 0.2, -18)
+script = ExtResource("8_group")
+
+[node name="Ranged1" parent="EnemyGroup" instance=ExtResource("5_ranged")]
+
+[node name="Guard1" parent="EnemyGroup" instance=ExtResource("6_guard")]
+position = Vector3(-1.2, 0, 0.3)
+BodyPushResistance = 9999.0
+WingSide = -1.0
+AnchorPath = NodePath("../Ranged1")
+
+[node name="Guard2" parent="EnemyGroup" instance=ExtResource("6_guard")]
+position = Vector3(1.2, 0, 0.3)
+BodyPushResistance = 9999.0
+AnchorPath = NodePath("../Ranged1")
+
+[node name="Swarm1" parent="EnemyGroup" instance=ExtResource("7_swarm")]
+position = Vector3(-2, 0, 2)
+
+[node name="Swarm2" parent="EnemyGroup" instance=ExtResource("7_swarm")]
+position = Vector3(-0.7, 0, 3)
+
+[node name="Swarm3" parent="EnemyGroup" instance=ExtResource("7_swarm")]
+position = Vector3(0.7, 0, 3)
+
+[node name="Swarm4" parent="EnemyGroup" instance=ExtResource("7_swarm")]
+position = Vector3(2, 0, 2)

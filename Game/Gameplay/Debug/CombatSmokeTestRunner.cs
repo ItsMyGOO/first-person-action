@@ -26,6 +26,7 @@ public partial class CombatSmokeTestRunner : Node
         await ArrowDirectionPhase();
         await KeybindPhase();
         await RangedEnemyPhase();
+        await EnemyGroupPhase();
 
         GD.Print(_failures == 0 ? "[SMOKE] 全部通过" : $"[SMOKE] {_failures} 项失败");
         GetTree().Quit(_failures == 0 ? 0 : 1);
@@ -281,6 +282,60 @@ public partial class CombatSmokeTestRunner : Node
         Check(player.Health01 == php.CurrentHealth / php.MaxHealth, "HUD 血条比例与实际血量一致");
 
         ranged.QueueFree();
+        await EndPhase(main);
+    }
+
+    /// <summary>编组（M4 §4）：默认未激活不干扰木桩区；玩家进入半径聚合激活；
+    /// 低级兵逼近环绕、远程被贴近后撤、护卫被冲锋推不动且挡停玩家。</summary>
+    private async Task EnemyGroupPhase()
+    {
+        (Node main, Player player) = await StartPhase("res://Game/Config/Characters/Warrior.tres");
+        EnemyGroup group = main.GetNode<EnemyGroup>("EnemyGroup");
+        SwarmSoldier swarm1 = group.GetNode<SwarmSoldier>("Swarm1");
+        RangedEnemy ranged = group.GetNode<RangedEnemy>("Ranged1");
+        GuardEnemy guard2 = group.GetNode<GuardEnemy>("Guard2");
+
+        Check(!swarm1.Active, "编组初始未激活（不干扰木桩区冒烟）");
+        Vector3 swarmStart = swarm1.GlobalPosition;
+
+        // 玩家逼近（距编组 10m < 12m 激活半径）→ 聚合激活
+        player.GlobalPosition = new Vector3(0, 0.9f, -8);
+        await Frames(10);
+        Check(swarm1.Active && guard2.Active, "玩家进入激活半径后编组聚合激活");
+
+        // 贴近远程兵（<7m 带内）→ 后撤拉开（趁人群未散开先测，避免阻挡干扰）
+        Vector3 rangedBefore = ranged.GlobalPosition;
+        player.GlobalPosition = ranged.GlobalPosition + new Vector3(0, 0.9f, 5f);
+        await Frames(60);
+        Check(
+            (ranged.GlobalPosition - rangedBefore).Length() > 0.8f,
+            $"远程兵被贴近后撤 {(ranged.GlobalPosition - rangedBefore).Length():F2}m"
+        );
+
+        // 低级兵向环绕槽位移动
+        await Frames(60);
+        Check(
+            (swarm1.GlobalPosition - swarmStart).Length() > 1f,
+            $"低级兵激活后向槽位移动 {(swarm1.GlobalPosition - swarmStart).Length():F2}m"
+        );
+
+        // 护卫推不动：冲锋命中右翼护卫，冲锋窗口内护卫位移有限、玩家被挡停
+        player.GlobalPosition = guard2.GlobalPosition + new Vector3(0, 0.2f, 3f);
+        player.Rotation = Vector3.Zero;
+        await Frames(10);
+        Vector3 guardBefore = guard2.GlobalPosition;
+        PressRelease("skill_2");
+        await Frames(30); // 冲锋时长 0.42s ≈ 25 帧
+        float guardMoved = (guard2.GlobalPosition - guardBefore).Length();
+        await Frames(40);
+        Check(
+            guardMoved < 1.5f,
+            $"护卫冲锋窗口内位移 {guardMoved:F2}m < 1.5m（推不动；对照轻木桩被推 ~4m）"
+        );
+        float stopDist = (player.GlobalPosition - guard2.GlobalPosition).Length();
+        Check(stopDist > 0.8f && stopDist < 1.4f, $"玩家冲锋被护卫挡停在 {stopDist:F2}m");
+        Check(!player.IsCastingSkill, "冲锋已结束");
+
         await EndPhase(main);
     }
 

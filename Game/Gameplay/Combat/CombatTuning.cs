@@ -107,6 +107,13 @@ public static class CombatTuning
     // —— 护卫敌人（M4）——
     public const float GuardWingOffset = 1.2f; // 左右翼跟随偏移
     public const float GuardEngageRange = 2.6f; // 玩家近身才转入攻击
-    public const float GuardLeashRange = 3.5f; // 离开远程单位过远即回归跟随
+    public const float GuardLeashRange = 3.5f; // 玩家离开即回归跟随（leash 滞回）
     public const float GuardMoveSpeed = 3.6f;
+    public const float GuardAttackRange = 2.0f;
+    public const float GuardAttackHalfAngleDeg = 60f;
+    public const float GuardAttackWindup = 0.45f;
+    public const float GuardAttackCooldown = 1.5f;
+    public const float GuardAttackDamage = 12f;
+    public const float GuardAttackPoiseDamage = 15f;
+    public const float GuardAttackKnockback = 3f;
 }
