@@ -76,4 +76,12 @@ public static class CombatTuning
     public const float StaggerSeconds = 0.28f;
     public const float DownedSeconds = 2.5f;
     public const float KnockbackDuration = 0.25f;
+
+    // —— 弓箭手瞄准 ——
+    public const float BaseFov = 90f;
+    public const float AimFov = 65f; // 瞄准时 FOV 收缩
+    public const float AimShoulderX = 0.35f; // 肩视镜头横向偏移（米）
+    public const float AimBlendSpeed = 10f; // 瞄准表现过渡速度
+    public const float AimSpeedScale = 0.5f; // 瞄准时移速比例
+    public const float ArrowGravity = 4f; // 未满级箭矢下坠（米/秒²）
 }
