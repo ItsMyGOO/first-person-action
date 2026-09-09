@@ -19,6 +19,7 @@ config/icon="res://icon.svg"
 [autoload]
 
 HitstopManager="*res://Game/Gameplay/Combat/HitstopManager.cs"
+GameSession="*res://Game/Gameplay/Core/GameSession.cs"
 
 [dotnet]
 

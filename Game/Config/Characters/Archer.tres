@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="CharacterDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Game/Gameplay/Characters/CharacterDefinition.cs" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+DisplayName = "弓箭手"
+Style = 1
+MaxHealth = 90.0
+WalkSpeed = 5.2
+SkillIds = Array[int]([3])
+QuickShotDamage = 6.0
+QuickShotCooldown = 0.35
+ChargeFullSeconds = 1.1
+ArrowDamageLevels = Array[float]([10.0, 18.0, 30.0])
+ArrowSpeedLevels = Array[float]([26.0, 34.0, 44.0])
