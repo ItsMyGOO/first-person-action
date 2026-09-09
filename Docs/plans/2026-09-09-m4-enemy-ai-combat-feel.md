@@ -101,7 +101,7 @@ Game/Gameplay/Enemies/
 
 ## 6. 任务序（每任务构建+测试+提交，最后合并 main）
 
-- [ ] **T1 箭矢修复**：Spawn 挂场景根 + GlobalPosition 积分 + collisionMask 参数 + 转身 180° 回归冒烟
+- [x] **T1 箭矢修复**：Spawn 挂场景根 + GlobalPosition 积分 + collisionMask 参数 + 转身 180° 回归冒烟
 - [ ] **T2 玩家受击路径**：Player 实现 ICombatTarget + HUD 玩家血条 + 死亡重载场景
 - [ ] **T3 改键底层**：默认键改 1/2/3 + KeybindManager(autoload) + 持久化 + 重绑冒烟
 - [ ] **T4 敌人基类+低级兵**：EnemyAI 基类（从 DummyEnemy 上移共性）+ AttackCycle（TDD）+ SurroundSlotAssigner（TDD）+ SwarmSoldier + EnemyGroup 激活

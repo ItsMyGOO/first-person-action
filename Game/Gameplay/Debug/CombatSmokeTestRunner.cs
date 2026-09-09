@@ -23,6 +23,7 @@ public partial class CombatSmokeTestRunner : Node
         await WarriorSkillPhase();
         await HeavyBlockPhase();
         await ArcherPhase();
+        await ArrowDirectionPhase();
 
         GD.Print(_failures == 0 ? "[SMOKE] 全部通过" : $"[SMOKE] {_failures} 项失败");
         GetTree().Quit(_failures == 0 ? 0 : 1);
@@ -131,9 +132,6 @@ public partial class CombatSmokeTestRunner : Node
 
         PressRelease("skill_2");
         await Frames(70);
-        float heavyMoved = 0f;
-        // heavy 位置取 Build 后快照对比
-        heavyMoved = 0f;
         float dist = (player.GlobalPosition - heavy.GlobalPosition).Length();
         Check(dist > 0.9f, $"冲锋被重木桩挡停在 {dist:F2}m（未穿过，半径和 1.05m）");
         Check(!player.IsCastingSkill, "冲锋已结束");
@@ -193,6 +191,33 @@ public partial class CombatSmokeTestRunner : Node
         await Frames(40);
         Check(hp.CurrentHealth == before - 36f, $"打断后不放箭：HP 仍为 {hp.CurrentHealth}");
         Check(!player.IsCharging, "蓄力已被打断清零");
+
+        await EndPhase(main);
+    }
+
+    /// <summary>箭矢方向回归（M4 §1）：yaw 转 180° 后射快速箭，箭必须沿镜头方向命中身后木桩。
+    /// 旧实现把箭挂在玩家下做局部坐标积分，转身后箭会飞向旋转后的错误方向。</summary>
+    private async Task ArrowDirectionPhase()
+    {
+        (Node main, Player player) = await StartPhase("res://Game/Config/Characters/Archer.tres");
+        DummyEnemy dummy = main.GetNode<DummyEnemy>("Dummy1");
+        HealthComponent hp = main.GetNode<HealthComponent>("Dummy1/HealthComponent");
+
+        // 玩家站到木桩北侧（-Z），yaw 转 180° 后镜头朝 +Z，木桩位于镜头正前方
+        player.GlobalPosition = dummy.GlobalPosition + new Vector3(0, 0.2f, -2.5f);
+        System.Reflection.BindingFlags flags =
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+        typeof(Player).GetField("_yaw", flags)!.SetValue(player, Mathf.Pi);
+        typeof(Player).GetField("_pitch", flags)!.SetValue(player, -0.35f);
+        await Frames(10); // 等 _Process 把反射设置的偏航写入变换
+
+        float before = hp.CurrentHealth;
+        PressRelease("attack"); // 快速箭
+        await Frames(40);
+        Check(
+            hp.CurrentHealth == before - 6f,
+            $"yaw 180° 后快速箭命中身后木桩：HP {before} -> {hp.CurrentHealth}"
+        );
 
         await EndPhase(main);
     }
