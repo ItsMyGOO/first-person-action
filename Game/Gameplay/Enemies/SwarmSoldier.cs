@@ -20,6 +20,10 @@ public partial class SwarmSoldier : EnemyAI
     /// <summary>本兵的环绕槽位角度（EnemyGroup 分配，世界系弧度）。</summary>
     public float SlotAngle { get; set; }
 
+    /// <summary>前摇预告色（闪红优先）。</summary>
+    protected override Color DisplayColor =>
+        _attack.Phase == AttackCyclePhase.Windup && !IsFlashing ? WindupColor : base.DisplayColor;
+
     protected override void TickActive(float dt)
     {
         Player? player = TargetPlayer;
@@ -61,7 +65,6 @@ public partial class SwarmSoldier : EnemyAI
         DesiredHorizontal = Vector3.Zero;
         FaceTowards(player.GlobalPosition);
         _attack.Tick(dt);
-        Material.AlbedoColor = _attack.Phase == AttackCyclePhase.Windup ? WindupColor : Tint;
 
         if (_attack.TryConsumeStrike())
         {

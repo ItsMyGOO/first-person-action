@@ -142,3 +142,24 @@ public class SurroundSlotAssignerTests
         Assert.Empty(angles);
     }
 }
+
+public class KiteBandTests
+{
+    private static readonly KiteBand Band = new(
+        CombatTuning.RangedKiteNear,
+        CombatTuning.RangedKiteFar
+    );
+
+    [Theory]
+    [InlineData(5f, KiteAction.Retreat)] // < 7m 后退
+    [InlineData(6.9f, KiteAction.Retreat)]
+    [InlineData(7f, KiteAction.Hold)] // 区间边界驻留
+    [InlineData(9f, KiteAction.Hold)]
+    [InlineData(11f, KiteAction.Hold)]
+    [InlineData(11.1f, KiteAction.Approach)] // > 11m 接近
+    [InlineData(15f, KiteAction.Approach)]
+    public void Decide_FollowsDistanceBand(float distance, KiteAction expected)
+    {
+        Assert.Equal(expected, Band.Decide(distance));
+    }
+}

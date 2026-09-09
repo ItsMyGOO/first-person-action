@@ -25,6 +25,7 @@ public partial class CombatSmokeTestRunner : Node
         await ArcherPhase();
         await ArrowDirectionPhase();
         await KeybindPhase();
+        await RangedEnemyPhase();
 
         GD.Print(_failures == 0 ? "[SMOKE] 全部通过" : $"[SMOKE] {_failures} 项失败");
         GetTree().Quit(_failures == 0 ? 0 : 1);
@@ -252,6 +253,34 @@ public partial class CombatSmokeTestRunner : Node
             "ResetToDefaults 后 keybinds.cfg 已删除"
         );
 
+        await EndPhase(main);
+    }
+
+    /// <summary>远程敌人（M4）：9m 距离带内驻停瞄准（0.7s 红线预告）→ 射箭，
+    /// 掩码为世界+玩家层（无友伤），玩家应掉血 10。</summary>
+    private async Task RangedEnemyPhase()
+    {
+        (Node main, Player player) = await StartPhase("res://Game/Config/Characters/Warrior.tres");
+        var ranged = ResourceLoader
+            .Load<PackedScene>("res://Game/Scenes/RangedEnemy.tscn")
+            .Instantiate<RangedEnemy>();
+        ranged.Position = new Vector3(0, 0.2f, 1f); // 与玩家出生点(0,0.2,10)相距 9m → 驻留带内
+        ranged.Active = true;
+        main.AddChild(ranged);
+        await Frames(10);
+
+        HealthComponent php = main.GetNode<HealthComponent>("Player/HealthComponent");
+        float before = php.CurrentHealth;
+
+        // 瞄准 0.7s(~42帧) + 箭飞行 9m/14ms⁻¹(~39帧)，留余量；冷却 2.4s 保证只中一箭
+        await Frames(140);
+        Check(
+            php.CurrentHealth == before - 10f,
+            $"远程敌箭命中玩家掉血 10：HP {before} -> {php.CurrentHealth}"
+        );
+        Check(player.Health01 == php.CurrentHealth / php.MaxHealth, "HUD 血条比例与实际血量一致");
+
+        ranged.QueueFree();
         await EndPhase(main);
     }
 

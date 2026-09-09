@@ -585,8 +585,9 @@ public partial class Player : CharacterBody3D, IAbilityContext, ICombatTarget
         HitstopManager.Request(CombatTuning.HitstopMs);
 
     // —— ICombatTarget（敌方近战/箭矢的受击面；v1 只扣血，无硬直/击退） ——
+    // 注：玩家原点在胶囊几何中心（落地后 GlobalPosition.y≈0.9），上偏 0.3m = 世界胸口高度 1.2m
 
-    Vector3 ICombatTarget.Center => GlobalPosition + Vector3.Up * 1.2f;
+    Vector3 ICombatTarget.Center => GlobalPosition + Vector3.Up * 0.3f;
 
     bool ICombatTarget.CanBeHit => !_health.IsDead;
 

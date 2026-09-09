@@ -109,11 +109,17 @@ public abstract partial class EnemyAI : CharacterBody3D, ICombatTarget
         TickShared(dt);
     }
 
+    /// <summary>受击闪红进行中（子类预告表现让位于闪红）。</summary>
+    protected bool IsFlashing => _flashElapsed > 0f;
+
+    /// <summary>当前显示色：闪红 > 子类预告色 > 基础色。TickShared 统一写材质。</summary>
+    protected virtual Color DisplayColor => IsFlashing ? FlashColor : Tint;
+
     /// <summary>共用的物理推进：受击状态、闪红、强制位移/行为速度、重力、移动。</summary>
     protected void TickShared(float dt)
     {
         Reaction.Tick(dt);
-        Material.AlbedoColor = _flashElapsed > 0f ? FlashColor : Tint;
+        Material.AlbedoColor = DisplayColor;
         if (_flashElapsed > 0f)
         {
             _flashElapsed -= dt;
