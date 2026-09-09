@@ -51,6 +51,7 @@ public static class CombatTuning
     };
 
     public const string TargetGroup = "combat_targets";
+    public const string PlayerGroup = "player";
     public const float AttackRange = 2.2f; // 近战判定距离
     public const float AttackHalfAngleDeg = 55f; // 前方锥形半角
     public const float AttackMoveScale = 0.15f; // 攻击期间移动输入衰减

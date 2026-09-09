@@ -1,13 +1,16 @@
 using System.Collections.Generic;
 using Godot;
 using GodotGameTemplate.Core;
+using GodotGameTemplate.Spatial;
 
 namespace GodotGameTemplate.Combat;
 
 /// <summary>
 /// 玩家角色控制器（第一人称，规格第 3 节）。
-/// 移动为连续意图直接驱动（联机时改走意图流）；动作类输入经 InputCommandBuffer
-/// 缓冲后驱动 MeleeComboTracker 与闪避。「条件满足才消费」是缓冲的核心模式。
+/// 动作层为显式状态机：None / Melee / Dodge /（Skill、Aim 在后续任务加入）。
+/// 输入采用物理帧边沿轮询：按住类状态（移动/瞄准）直读，离散动作用
+/// 「按下沿压入 InputCommandBuffer、条件满足才消费」的缓冲模式——
+/// 对自动化模拟与联机命令化都友好（规格第 6 节）。
 /// </summary>
 public partial class Player : CharacterBody3D
 {
@@ -15,7 +18,9 @@ public partial class Player : CharacterBody3D
     public float MouseSensitivity = CombatTuning.MouseSensitivity;
 
     private Node3D _head = null!;
+    private Camera3D _camera = null!;
     private MeshInstance3D _viewArm = null!;
+    private SpatialAgent _agent = null!;
     private float _yaw;
     private float _pitch;
 
@@ -24,53 +29,58 @@ public partial class Player : CharacterBody3D
     private float _timeAccum;
     private long _nowMs;
 
-    private bool _dodging;
+    // —— 动作层状态机 ——
+    private enum ActionState
+    {
+        None,
+        Melee,
+        Dodge,
+    }
+
+    private ActionState _action = ActionState.None;
+
     private float _dodgeElapsed;
     private Vector3 _dodgeDirection = Vector3.Forward;
 
+    // —— 输入边沿（上一物理帧的按住状态）——
+    private bool _prevAttack;
+    private bool _prevJump;
+    private bool _prevDodge;
+    private bool _prevSkill1;
+    private bool _prevSkill2;
+    private bool _prevSkill3;
+
     public bool IsAttacking => _combo.IsActive;
 
-    public bool IsInvulnerable => _dodging && _dodgeElapsed < CombatTuning.DodgeInvulnerableSeconds;
+    public bool IsInvulnerable =>
+        _action == ActionState.Dodge && _dodgeElapsed < CombatTuning.DodgeInvulnerableSeconds;
 
     public override void _Ready()
     {
         _combo = new MeleeComboTracker(CombatTuning.WarriorCombo);
         _head = GetNode<Node3D>("Head");
+        _camera = GetNode<Camera3D>("Head/Camera3D");
         _viewArm = GetNode<MeshInstance3D>("Head/Camera3D/ViewModelArm");
+        _agent = GetNode<SpatialAgent>("SpatialAgent");
         Input.MouseMode = Input.MouseModeEnum.Captured;
         // 本地视角隐藏完整身体（联机时按归属控制，队友视角可见——规格第 3 节）
         GetNode<MeshInstance3D>("BodyVisual").Visible = false;
+        AddToGroup(CombatTuning.PlayerGroup);
     }
 
     public override void _UnhandledInput(InputEvent @event)
     {
-        if (
-            @event is InputEventMouseMotion motion
-            && Input.MouseMode == Input.MouseModeEnum.Captured
-        )
+        if (@event is InputEventMouseMotion motion && Input.MouseMode == Input.MouseModeEnum.Captured)
         {
             _yaw -= motion.Relative.X * MouseSensitivity;
             _pitch = Mathf.Clamp(
                 _pitch - motion.Relative.Y * MouseSensitivity,
                 -Mathf.DegToRad(CombatTuning.PitchClampDeg),
-                Mathf.DegToRad(CombatTuning.PitchClampDeg)
-            );
+                Mathf.DegToRad(CombatTuning.PitchClampDeg));
         }
         else if (@event.IsActionPressed("ui_cancel"))
         {
             Input.MouseMode = Input.MouseModeEnum.Visible;
-        }
-        else if (@event.IsActionPressed("attack"))
-        {
-            _buffer.Push(InputCommand.Action(InputCommandKind.Attack), _nowMs);
-        }
-        else if (@event.IsActionPressed("jump"))
-        {
-            _buffer.Push(InputCommand.Action(InputCommandKind.Jump), _nowMs);
-        }
-        else if (@event.IsActionPressed("dodge"))
-        {
-            _buffer.Push(InputCommand.Action(InputCommandKind.Dodge), _nowMs);
         }
     }
 
@@ -86,35 +96,71 @@ public partial class Player : CharacterBody3D
         _timeAccum += dt;
         _nowMs = (long)(_timeAccum * 1000f);
 
+        TickInputEdges();
         TickActions(dt);
         TickMovement(dt);
         TickViewModel(dt);
     }
 
-    private bool CanAcceptAction => !_dodging && _combo.CanStartAction;
+    /// <summary>把按住状态的变化转换为命令边沿：按下沿压入缓冲（条件满足时被消费）。</summary>
+    private void TickInputEdges()
+    {
+        PushOnPressEdge(ref _prevAttack, "attack", InputCommandKind.Attack);
+        PushOnPressEdge(ref _prevJump, "jump", InputCommandKind.Jump);
+        PushOnPressEdge(ref _prevDodge, "dodge", InputCommandKind.Dodge);
+        PushOnPressEdge(ref _prevSkill1, "skill_1", InputCommandKind.Skill1);
+        PushOnPressEdge(ref _prevSkill2, "skill_2", InputCommandKind.Skill2);
+        PushOnPressEdge(ref _prevSkill3, "skill_3", InputCommandKind.Skill3);
+    }
+
+    private void PushOnPressEdge(ref bool prev, string action, InputCommandKind kind)
+    {
+        bool held = Input.IsActionPressed(action);
+        if (held && !prev)
+        {
+            _buffer.Push(InputCommand.Action(kind), _nowMs);
+        }
+
+        prev = held;
+    }
+
+    // —— 动作层状态机 ——
+
+    /// <summary>近战可接受（开始或连段链）：空闲，或处于连段中且可被取消。</summary>
+    private bool CanAcceptMelee =>
+        _action == ActionState.None || (_action == ActionState.Melee && _combo.CanStartAction);
+
+    /// <summary>闪避可接受：空闲或连段取消窗口（后续任务扩展到瞄准状态）。</summary>
+    private bool CanAcceptDodge => CanAcceptMelee;
 
     private void TickActions(float dt)
     {
-        if (CanAcceptAction && _buffer.TryConsume(InputCommandKind.Dodge, _nowMs, out _))
+        if (CanAcceptDodge && _buffer.TryConsume(InputCommandKind.Dodge, _nowMs, out _))
         {
             StartDodge();
         }
 
-        if (_dodging)
+        if (_action == ActionState.Dodge)
         {
             _dodgeElapsed += dt;
             if (_dodgeElapsed >= CombatTuning.DodgeDuration)
             {
-                _dodging = false;
+                _action = ActionState.None;
             }
         }
 
-        if (CanAcceptAction && _buffer.TryConsume(InputCommandKind.Attack, _nowMs, out _))
+        if (CanAcceptMelee && _buffer.TryConsume(InputCommandKind.Attack, _nowMs, out _))
         {
             _combo.TryAdvance();
+            _action = ActionState.Melee;
         }
 
         _combo.Tick(dt);
+        if (_action == ActionState.Melee && !_combo.IsActive)
+        {
+            _action = ActionState.None;
+        }
+
         TickHitWindow();
     }
 
@@ -130,13 +176,8 @@ public partial class Player : CharacterBody3D
         Vector3 forward = ForwardFlat();
         List<ICombatTarget> targets = FindTargets();
         List<ICombatTarget> hits = MeleeArcQuery.FindHits(
-            GlobalPosition,
-            forward,
-            CombatTuning.AttackRange,
-            CombatTuning.AttackHalfAngleDeg,
-            targets,
-            t => t.Center
-        );
+            GlobalPosition, forward, CombatTuning.AttackRange,
+            CombatTuning.AttackHalfAngleDeg, targets, t => t.Center);
 
         if (hits.Count == 0)
         {
@@ -145,15 +186,13 @@ public partial class Player : CharacterBody3D
 
         foreach (ICombatTarget target in hits)
         {
-            target.ApplyHit(
-                new HitData
-                {
-                    Damage = stage.Damage,
-                    PoiseDamage = stage.PoiseDamage,
-                    Knockback = forward * stage.Knockback + Vector3.Up * 0.5f,
-                    Source = EntityId.None, // 联机时填玩家 NetworkId
-                }
-            );
+            target.ApplyHit(new HitData
+            {
+                Damage = stage.Damage,
+                PoiseDamage = stage.PoiseDamage,
+                Knockback = forward * stage.Knockback + Vector3.Up * 0.5f,
+                Source = EntityId.None, // 联机时填玩家 NetworkId
+            });
         }
 
         if (_combo.ConsumeHit())
@@ -178,13 +217,12 @@ public partial class Player : CharacterBody3D
 
     private void StartDodge()
     {
-        _dodging = true;
+        _action = ActionState.Dodge;
         _dodgeElapsed = 0f;
         Vector2 axis = Input.GetVector("move_left", "move_right", "move_forward", "move_back");
-        _dodgeDirection =
-            axis.LengthSquared() > 0.01f
-                ? (GlobalTransform.Basis * new Vector3(axis.X, 0f, axis.Y)).Normalized()
-                : ForwardFlat();
+        _dodgeDirection = axis.LengthSquared() > 0.01f
+            ? (GlobalTransform.Basis * new Vector3(axis.X, 0f, axis.Y)).Normalized()
+            : ForwardFlat();
         _combo.Reset(); // 闪避打断连段（取消规则的第一个成员）
     }
 
@@ -200,7 +238,7 @@ public partial class Player : CharacterBody3D
         Vector3 horizontal = new Vector3(Velocity.X, 0f, Velocity.Z);
         Vector3 target;
 
-        if (_dodging)
+        if (_action == ActionState.Dodge)
         {
             target = _dodgeDirection * CombatTuning.DodgeSpeed;
             horizontal = horizontal.MoveToward(target, CombatTuning.DodgeAccel * dt);
@@ -220,8 +258,7 @@ public partial class Player : CharacterBody3D
         else
         {
             target = wish * CombatTuning.WalkSpeed;
-            float accel =
-                wish.LengthSquared() > 0.01f ? CombatTuning.GroundAccel : CombatTuning.GroundDecel;
+            float accel = wish.LengthSquared() > 0.01f ? CombatTuning.GroundAccel : CombatTuning.GroundDecel;
             horizontal = horizontal.MoveToward(target, accel * dt);
         }
 
