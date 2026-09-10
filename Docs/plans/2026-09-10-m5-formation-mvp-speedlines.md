@@ -78,8 +78,8 @@ Game/Gameplay/Enemies/Formation/
 
 ## 3. 任务序（每任务构建+测试+提交，最后合并 main）
 
-- [ ] **T1 纯逻辑**：FormationLayout + FormationBrain TDD（红→绿→提交）
-- [ ] **T2 前排**：FormationMelee + EnemyShield/EnemyKnight 场景 + 站桩攻击（木桩区手动可验）
+- [x] **T1 纯逻辑**：FormationLayout + FormationBrain TDD（红→绿→提交）
+- [x] **T2 前排**：FormationMelee + EnemyShield/EnemyKnight 场景 + 站桩攻击（木桩区手动可验）
 - [ ] **T3 后排**：RangedEnemy 虚方法重构（行为等价，59 单测+既有冒烟全量回归）+ FormationArcher/法师 + 场景
 - [ ] **T4 接线**：FormationController + Main.tscn 三遭遇布局
 - [ ] **T5 阵型冒烟**：①正面被前排挡停在半径和 ②击杀中排盾后缺口可穿 ③绕阵半圈 yaw 不跟转、越阈才转 ④后排箭使玩家掉血 ⑤冲锋推散 250 盾 / 被 500 骑士挡停 ⑥贴侧绕行被边缘前排蹭血
