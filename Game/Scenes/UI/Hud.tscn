@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://Game/UI/Hud.cs" id="1_hud"]
+[ext_resource type="Script" path="res://Game/UI/SpeedLines.cs" id="2_speedlines"]
 
 [node name="Hud" type="CanvasLayer"]
 script = ExtResource("1_hud")
@@ -41,3 +42,11 @@ offset_bottom = 34.0
 mouse_filter = 2
 max_value = 100.0
 show_percentage = false
+
+[node name="SpeedLines" type="ColorRect" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+color = Color(1, 1, 1, 0)
+script = ExtResource("2_speedlines")

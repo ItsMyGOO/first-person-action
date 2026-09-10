@@ -3,6 +3,7 @@ using Godot;
 using GodotGameTemplate.Characters;
 using GodotGameTemplate.Combat;
 using GodotGameTemplate.Core;
+using GodotGameTemplate.UI;
 
 namespace GodotGameTemplate.DebugTools;
 
@@ -33,6 +34,7 @@ public partial class CombatSmokeTestRunner : Node
         await FormationChargePushPhase();
         await FormationChargeStopPhase();
         await FormationFlankPhase();
+        await SpeedLinesPhase();
 
         GD.Print(_failures == 0 ? "[SMOKE] 全部通过" : $"[SMOKE] {_failures} 项失败");
         GetTree().Quit(_failures == 0 ? 0 : 1);
@@ -376,6 +378,28 @@ public partial class CombatSmokeTestRunner : Node
         Check(ringsAfter > ringsBefore, $"落地生成 ShockwaveRing（{ringsAfter - ringsBefore} 个）");
         await Frames(50); // 0.4s 生命 + 余量
         Check(CountShockwaves() == ringsBefore, "ShockwaveRing 0.6s 内自毁");
+
+        await EndPhase(main);
+    }
+
+    /// <summary>速度线（M5 T6）：冲锋期间 shader 强度 > 0.5；结束后 0.5s 内回落 < 0.05。</summary>
+    private async Task SpeedLinesPhase()
+    {
+        (Node main, Player player) = await StartPhase("res://Game/Config/Characters/Warrior.tres");
+        SpeedLines speedLines = main.GetNode<SpeedLines>("Hud/SpeedLines");
+
+        Check(speedLines.CurrentIntensity < 0.05f, "空闲时速度线强度 ≈ 0");
+        PressRelease("skill_2");
+        await Frames(8); // 混合度快进 14/s，冲锋中即达峰
+        Check(
+            speedLines.CurrentIntensity > 0.5f,
+            $"冲锋期间速度线强度 {speedLines.CurrentIntensity:F2} > 0.5"
+        );
+        await Frames(65); // 冲锋 0.42s 结束 + 慢出 3.5/s（0.29s 归零）+ 0.5s 限额余量
+        Check(
+            speedLines.CurrentIntensity < 0.05f,
+            $"结束后 0.5s 强度回落 {speedLines.CurrentIntensity:F2} < 0.05"
+        );
 
         await EndPhase(main);
     }

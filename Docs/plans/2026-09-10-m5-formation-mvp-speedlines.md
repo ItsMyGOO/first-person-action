@@ -83,7 +83,7 @@ Game/Gameplay/Enemies/Formation/
 - [x] **T3 后排**：RangedEnemy 虚方法重构（行为等价，59 单测+既有冒烟全量回归）+ FormationArcher/法师 + 场景
 - [x] **T4 接线**：FormationController + Main.tscn 三遭遇布局
 - [x] **T5 阵型冒烟**：①正面被前排挡停在半径和 ②击杀中排盾后缺口可穿 ③绕阵半圈 yaw 不跟转、越阈才转 ④后排箭使玩家掉血 ⑤冲锋推散 250 盾 / 被 500 骑士挡停 ⑥贴侧绕行被边缘前排蹭血
-- [ ] **T6 速度线**：shader + SpeedLines 节点 + CameraFeel 强度驱动 + 冒烟断言
+- [x] **T6 速度线**：shader + SpeedLines 节点 + CameraFeel 强度驱动 + 冒烟断言
 - [ ] **T7 收尾**：全量单测+冒烟、csharpier、规格里程碑更新（M5 阵型完成记录）、计划执行记录、合并 main
 
 ## 4. 验收标准（对应阵型文档第 27 节六问）

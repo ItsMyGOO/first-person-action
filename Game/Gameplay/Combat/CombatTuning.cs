@@ -126,6 +126,12 @@ public static class CombatTuning
     public const float LeapLandShakeDecaySeconds = 0.35f; // 落地震动衰减时长
     public const float LandSinkMeters = 0.15f; // 落地相地下沉
 
+    // —— 冲刺速度线（M5 §2，纯表现层）——
+    public const float SpeedLineDensity = 48f; // 径向扇区数
+    public const float SpeedLineScrollSpeed = 2.5f; // 线条流动速度
+    public const float SpeedVignetteStrength = 0.35f; // 暗角强度
+    public const float SpeedLinesMaxIntensity = 1.0f; // 强度上限
+
     // —— 阵型（M5，文档 §23 MVP）——
     public const float FormationMoveSpeed = 3.0f; // 阵型成员回槽速度
     public const float FormationSlotSnapDist = 0.15f; // 到槽判定距离
