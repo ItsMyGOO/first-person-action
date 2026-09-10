@@ -28,3 +28,6 @@ dist/
 *.suo
 .DS_Store
 Thumbs.db
+
+# ZCode session state
+.zcode/
