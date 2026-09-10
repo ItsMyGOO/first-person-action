@@ -8,6 +8,8 @@ namespace GodotGameTemplate.Combat;
 /// 远程敌人（M4 §4）：风筝距离带 [7,11]m——<7 后退、>11 接近、区间驻停留；
 /// 驻停时走「瞄准 0.7s（红色预告线）→ 射箭 → 冷却 2.4s」循环。
 /// 箭矢复用 Projectile，掩码取世界+玩家层（排除敌方层，无友伤）。
+/// M5 §1.3：「想去哪」抽为虚方法 MoveIntent（默认=风筝距离带，行为不变），
+/// 阵型后排变体覆写为槽位驻守；瞄准/射击链路（虚成员可调参）保持复用。
 /// </summary>
 public partial class RangedEnemy : EnemyAI
 {
@@ -20,6 +22,12 @@ public partial class RangedEnemy : EnemyAI
     private MeshInstance3D _aimLine = null!;
     private float _aimElapsed;
     private float _cooldown;
+
+    /// <summary>瞄准预告时长（阵型变体可调）。</summary>
+    protected virtual float AimSeconds => CombatTuning.RangedAimSeconds;
+
+    /// <summary>射击冷却（阵型变体可调）。</summary>
+    protected virtual float AttackCooldownSeconds => CombatTuning.RangedAttackCooldown;
 
     protected override void OnEnemyReady()
     {
@@ -38,6 +46,20 @@ public partial class RangedEnemy : EnemyAI
         AddChild(_aimLine);
     }
 
+    /// <summary>移动意图（虚方法）：默认按风筝距离带给出水平速度，驻留返回零向量。</summary>
+    protected virtual Vector3 MoveIntent(Player player, Vector3 toPlayer, float distance)
+    {
+        KiteAction action = _band.Decide(distance);
+        if (action == KiteAction.Hold)
+        {
+            return Vector3.Zero;
+        }
+
+        Vector3 dir = toPlayer / Mathf.Max(distance, 0.0001f);
+        float speed = CombatTuning.RangedMoveSpeed * (action == KiteAction.Retreat ? -1f : 1f);
+        return dir * speed;
+    }
+
     protected override void TickActive(float dt)
     {
         Player? player = TargetPlayer;
@@ -53,19 +75,16 @@ public partial class RangedEnemy : EnemyAI
         float distance = toPlayer.Length();
         FaceTowards(player.GlobalPosition);
 
-        // 风筝走位（瞄准离开距离带即作废）
-        KiteAction action = _band.Decide(distance);
-        if (action == KiteAction.Hold)
+        // 风筝走位（瞄准随移动作废——与 M4 行为一致：移动中不瞄准）
+        Vector3 intent = MoveIntent(player, toPlayer, distance);
+        DesiredHorizontal = intent;
+        if (intent != Vector3.Zero)
         {
-            DesiredHorizontal = Vector3.Zero;
-            TickAim(dt, player);
+            HideAimLine();
             return;
         }
 
-        HideAimLine();
-        Vector3 dir = toPlayer / Mathf.Max(distance, 0.0001f);
-        float speed = CombatTuning.RangedMoveSpeed * (action == KiteAction.Retreat ? -1f : 1f);
-        DesiredHorizontal = dir * speed;
+        TickAim(dt, player);
     }
 
     private void TickAim(float dt, Player player)
@@ -79,14 +98,14 @@ public partial class RangedEnemy : EnemyAI
 
         _aimElapsed += dt;
         ShowAimLine(player);
-        if (_aimElapsed < CombatTuning.RangedAimSeconds)
+        if (_aimElapsed < AimSeconds)
         {
             return;
         }
 
         Fire(player);
         _aimElapsed = 0f;
-        _cooldown = CombatTuning.RangedAttackCooldown;
+        _cooldown = AttackCooldownSeconds;
         HideAimLine();
     }
 
@@ -124,17 +143,21 @@ public partial class RangedEnemy : EnemyAI
             origin + direction * 0.5f,
             direction,
             speed: 14f,
-            new HitData
-            {
-                Damage = 10f,
-                PoiseDamage = 12f,
-                Knockback = direction * 2f,
-                Source = EntityId.None,
-            },
+            NewArrowHit(direction),
             gravity: 0f,
             collisionMask: ArrowMask
         );
     }
+
+    /// <summary>箭矢伤害数据（阵型变体可调参）。</summary>
+    protected virtual HitData NewArrowHit(Vector3 direction) =>
+        new()
+        {
+            Damage = 10f,
+            PoiseDamage = 12f,
+            Knockback = direction * 2f,
+            Source = EntityId.None,
+        };
 
     protected override void OnDied()
     {

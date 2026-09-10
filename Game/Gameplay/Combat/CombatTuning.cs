@@ -125,4 +125,21 @@ public static class CombatTuning
     public const float LeapLandShake = 0.4f; // 落地震动爆发幅度
     public const float LeapLandShakeDecaySeconds = 0.35f; // 落地震动衰减时长
     public const float LandSinkMeters = 0.15f; // 落地相地下沉
+
+    // —— 冲刺速度线（M5 §2，纯表现层）——
+    public const float SpeedLineDensity = 48f; // 径向扇区数
+    public const float SpeedLineScrollSpeed = 2.5f; // 线条流动速度
+    public const float SpeedVignetteStrength = 0.35f; // 暗角强度
+    public const float SpeedLinesMaxIntensity = 1.0f; // 强度上限
+
+    // —— 阵型（M5，文档 §23 MVP）——
+    public const float FormationMoveSpeed = 3.0f; // 阵型成员回槽速度
+    public const float FormationSlotSnapDist = 0.15f; // 到槽判定距离
+    public const float FormationMeleeAttackRange = 2.2f; // 前排近战攻击距离
+    public const float FormationMeleeAttackHalfAngleDeg = 60f;
+    public const float FormationMeleeAttackWindup = 0.45f;
+    public const float FormationMeleeAttackCooldown = 1.6f;
+    public const float FormationMeleeAttackDamage = 10f;
+    public const float FormationMeleeAttackPoiseDamage = 18f;
+    public const float FormationMeleeAttackKnockback = 2.5f;
 }

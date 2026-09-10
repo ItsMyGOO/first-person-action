@@ -21,7 +21,14 @@ public partial class CameraFeel : Node
     private float _landSink; // 落地下沉（1→0 回弹）
     private float _kickPitch; // 起跳上仰小踢
 
-    public override void _Ready() => _camera = GetParent<Camera3D>();
+    public override void _Ready()
+    {
+        AddToGroup("camera_feel");
+        _camera = GetParent<Camera3D>();
+    }
+
+    /// <summary>速度线驱动强度：max(冲锋混合度, 滞空混合度)，复用既有渐入渐出（M5 §2）。</summary>
+    public float SpeedIntensity => Mathf.Max(_chargeBlend, _leapBlend);
 
     public override void _Process(double delta)
     {
