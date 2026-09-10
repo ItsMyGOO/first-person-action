@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3]
+[gd_scene load_steps=15 format=3]
 
 [ext_resource type="Script" path="res://Game/Scenes/Main.cs" id="0_main"]
 [ext_resource type="PackedScene" path="res://Game/Scenes/EnemyDummy.tscn" id="2_dummy"]
@@ -8,6 +8,11 @@
 [ext_resource type="PackedScene" path="res://Game/Scenes/GuardEnemy.tscn" id="6_guard"]
 [ext_resource type="PackedScene" path="res://Game/Scenes/SwarmSoldier.tscn" id="7_swarm"]
 [ext_resource type="Script" path="res://Game/Gameplay/Enemies/EnemyGroup.cs" id="8_group"]
+[ext_resource type="Script" path="res://Game/Gameplay/Enemies/Formation/FormationController.cs" id="9_formation"]
+[ext_resource type="PackedScene" path="res://Game/Scenes/EnemyShield.tscn" id="10_shield"]
+[ext_resource type="PackedScene" path="res://Game/Scenes/EnemyKnight.tscn" id="11_knight"]
+[ext_resource type="PackedScene" path="res://Game/Scenes/EnemyFormationArcher.tscn" id="12_archer"]
+[ext_resource type="PackedScene" path="res://Game/Scenes/EnemyFormationMage.tscn" id="13_mage"]
 
 [sub_resource type="PlaneMesh" id="floor_mesh"]
 size = Vector2(40, 40)
@@ -102,8 +107,32 @@ BodyPushResistance = 800.0
 
 [node name="Hud" parent="." instance=ExtResource("4_hud")]
 
-[node name="EnemyGroup" type="Node3D" parent="."]
+[node name="Formation" type="Node3D" parent="."]
 position = Vector3(0, 0.2, -18)
+script = ExtResource("9_formation")
+
+[node name="ShieldL" parent="Formation" instance=ExtResource("10_shield")]
+position = Vector3(-1.4, 0, -1.5)
+SlotIndex = 0
+
+[node name="KnightC" parent="Formation" instance=ExtResource("11_knight")]
+position = Vector3(0, 0, -1.5)
+SlotIndex = 1
+
+[node name="ShieldR" parent="Formation" instance=ExtResource("10_shield")]
+position = Vector3(1.4, 0, -1.5)
+SlotIndex = 2
+
+[node name="ArcherB" parent="Formation" instance=ExtResource("12_archer")]
+position = Vector3(-0.7, 0, 1.2)
+SlotIndex = 3
+
+[node name="MageB" parent="Formation" instance=ExtResource("13_mage")]
+position = Vector3(0.7, 0, 1.2)
+SlotIndex = 4
+
+[node name="EnemyGroup" type="Node3D" parent="."]
+position = Vector3(13, 0, -2)
 script = ExtResource("8_group")
 
 [node name="Ranged1" parent="EnemyGroup" instance=ExtResource("5_ranged")]

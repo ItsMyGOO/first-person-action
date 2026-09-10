@@ -299,8 +299,8 @@ public partial class CombatSmokeTestRunner : Node
         Check(!swarm1.Active, "编组初始未激活（不干扰木桩区冒烟）");
         Vector3 swarmStart = swarm1.GlobalPosition;
 
-        // 玩家逼近（距编组 10m < 12m 激活半径）→ 聚合激活
-        player.GlobalPosition = new Vector3(0, 0.9f, -8);
+        // 玩家逼近东侧编组（M5 迁至 (13,0,-2)；距 8.5m < 12m 激活半径）→ 聚合激活
+        player.GlobalPosition = new Vector3(5, 0.9f, -5);
         await Frames(10);
         Check(swarm1.Active && guard2.Active, "玩家进入激活半径后编组聚合激活");
 
