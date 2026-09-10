@@ -20,6 +20,9 @@ public partial class FormationController : Node3D
     private readonly FormationRoster _roster = new();
     private bool _activated;
 
+    /// <summary>当前阵型朝向（度；冒烟/调试用）。</summary>
+    public float FacingYawDeg => _brain.YawDeg;
+
     public override void _Ready()
     {
         foreach (Node child in GetChildren())

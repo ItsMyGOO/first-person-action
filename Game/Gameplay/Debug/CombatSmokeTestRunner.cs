@@ -28,6 +28,11 @@ public partial class CombatSmokeTestRunner : Node
         await RangedEnemyPhase();
         await EnemyGroupPhase();
         await FeelPhase();
+        await FormationPhase();
+        await FormationYawPhase();
+        await FormationChargePushPhase();
+        await FormationChargeStopPhase();
+        await FormationFlankPhase();
 
         GD.Print(_failures == 0 ? "[SMOKE] 全部通过" : $"[SMOKE] {_failures} 项失败");
         GetTree().Quit(_failures == 0 ? 0 : 1);
@@ -359,8 +364,14 @@ public partial class CombatSmokeTestRunner : Node
         player.LeapLanded += () => leapLanded = true;
         int ringsBefore = CountShockwaves();
         PressRelease("skill_1");
-        await Frames(80); // 起跳 0.5s 位移 + 落地
+        // 等落地事件（上限 120 帧）再计数，避免固定等待与环 0.4s 生命重叠的边沿时序
+        for (int i = 0; i < 120 && !leapLanded; i++)
+        {
+            await Frames(1);
+        }
+
         Check(leapLanded, "跳劈落地触发 LeapLanded");
+        await Frames(5);
         int ringsAfter = CountShockwaves();
         Check(ringsAfter > ringsBefore, $"落地生成 ShockwaveRing（{ringsAfter - ringsBefore} 个）");
         await Frames(50); // 0.4s 生命 + 余量
@@ -371,6 +382,181 @@ public partial class CombatSmokeTestRunner : Node
 
     private int CountShockwaves() =>
         GetTree().CurrentScene!.FindChildren("ShockwaveRing*", "", true, false).Count;
+
+    // —— 阵型冒烟（M5 T5，对应验收六问）——
+
+    /// <summary>阵型①②④：聚合激活+面向玩家；后排箭掉血；正面被前排挡停；
+    /// 击杀中排骑士后缺口可穿（盾位悬空不补位）。</summary>
+    private async Task FormationPhase()
+    {
+        (Node main, Player player) = await StartPhase("res://Game/Config/Characters/Warrior.tres");
+        FormationController formation = main.GetNode<FormationController>("Formation");
+        FormationMelee knight = formation.GetNode<FormationMelee>("KnightC");
+        HealthComponent php = main.GetNode<HealthComponent>("Player/HealthComponent");
+
+        Check(!knight.Active, "阵型初始未激活（不干扰木桩区冒烟）");
+        player.GlobalPosition = new Vector3(0, 0.9f, -10); // 距阵型中心 6.5m < 12m
+        await Frames(10);
+        Check(
+            knight.Active && formation.GetNode<FormationMelee>("ShieldE").Active,
+            "玩家进入半径后阵型聚合激活"
+        );
+        Check(
+            Mathf.Abs(Mathf.Wrap(formation.FacingYawDeg - 180f, -180f, 180f)) < 1f,
+            $"激活瞬间阵型面向玩家（yaw={formation.FacingYawDeg:F1}°）"
+        );
+
+        // ④ 后排箭矢压制
+        float hpBefore = php.CurrentHealth;
+        await Frames(110); // 瞄准 0.7s + 箭飞行 ~7.7m，留余量
+        Check(
+            php.CurrentHealth < hpBefore,
+            $"后排箭矢使玩家掉血：{hpBefore} -> {php.CurrentHealth}"
+        );
+
+        // ① 正面冲击被前排挡停
+        Input.ActionPress("move_forward");
+        await Frames(90);
+        Input.ActionRelease("move_forward");
+        await Frames(5);
+        float dist = (player.GlobalPosition - knight.GlobalPosition).Length();
+        Check(
+            dist > 0.75f && dist < 1.7f,
+            $"正面被前排挡停在 {dist:F2}m（半径和 ≈0.9m 附近，前排是一道墙）"
+        );
+
+        // ② 击杀中排骑士 → 缺口可穿（其余成员槽位不动）
+        float shieldEx = formation.GetNode<FormationMelee>("ShieldE").GlobalPosition.X;
+        formation.GetNode<HealthComponent>("KnightC/HealthComponent").ApplyDamage(999f);
+        await Frames(10);
+        Input.ActionPress("move_forward");
+        await Frames(120);
+        Input.ActionRelease("move_forward");
+        Check(
+            player.GlobalPosition.Z < -18.3f,
+            $"击杀中排后缺口可穿：Z={player.GlobalPosition.Z:F2}（越过后排线 -17.7）"
+        );
+        Check(
+            Mathf.Abs(formation.GetNode<FormationMelee>("ShieldE").GlobalPosition.X - shieldEx)
+                < 0.5f,
+            "死亡成员槽位悬空，其余成员未重分配补位"
+        );
+
+        await EndPhase(main);
+    }
+
+    /// <summary>阵型③：朝向滞回——阈值内绕行不跟转；绕到阵后越阈才匀速转到位。</summary>
+    private async Task FormationYawPhase()
+    {
+        (Node main, Player player) = await StartPhase("res://Game/Config/Characters/Warrior.tres");
+        FormationController formation = main.GetNode<FormationController>("Formation");
+
+        player.GlobalPosition = new Vector3(0, 0.9f, -10);
+        await Frames(10); // 激活：面向南（180°）
+
+        // 阈值内（≈40°）绕行：不炮塔式跟转
+        player.GlobalPosition = new Vector3(5.1f, 0.9f, -10.4f);
+        await Frames(60);
+        Check(
+            Mathf.Abs(Mathf.Wrap(formation.FacingYawDeg - 180f, -180f, 180f)) < 1f,
+            $"阈值内绕阵不跟转（yaw={formation.FacingYawDeg:F1}°，应保持 180°）"
+        );
+
+        // 绕到阵型背后（偏差 180° > 55°）：90°/s 匀速转到位（需 2s）
+        player.GlobalPosition = new Vector3(0, 0.9f, -24f);
+        await Frames(200);
+        Check(
+            Mathf.Abs(Mathf.Wrap(formation.FacingYawDeg, -180f, 180f)) < 3f,
+            $"越阈后转向玩家并转到位（yaw={formation.FacingYawDeg:F1}°，应 ≈0°）"
+        );
+
+        await EndPhase(main);
+    }
+
+    /// <summary>阵型⑤a：冲锋推开 250 盾兵（推力 500 > 抗性 250）。</summary>
+    private async Task FormationChargePushPhase()
+    {
+        (Node main, Player player) = await StartPhase("res://Game/Config/Characters/Warrior.tres");
+        FormationController formation = main.GetNode<FormationController>("Formation");
+        FormationMelee shieldW = formation.GetNode<FormationMelee>("ShieldW");
+
+        player.GlobalPosition = new Vector3(0, 0.9f, -10);
+        await Frames(10);
+        player.GlobalPosition = new Vector3(-1.4f, 0.2f, -12f);
+        player.Rotation = Vector3.Zero; // 面向 -Z（阵型方向，正对西侧盾兵）
+        await Frames(10);
+        Vector3 before = shieldW.GlobalPosition;
+        float maxPush = 0f;
+        PressRelease("skill_2");
+        // 盾兵被推的同时会走回槽位，取冲锋窗口内的峰值位移
+        for (int i = 0; i < 15; i++)
+        {
+            await Frames(2);
+            maxPush = Mathf.Max(maxPush, (shieldW.GlobalPosition - before).Length());
+        }
+
+        Check(maxPush > 0.8f, $"冲锋推开 250 盾兵：峰值位移 {maxPush:F2}m（冲锋=突破能力）");
+        Check(!player.IsCastingSkill, "冲锋已结束");
+
+        await EndPhase(main);
+    }
+
+    /// <summary>阵型⑤b：冲锋被 500 骑士挡停且骑士推不动（推力 500 ≤ 抗性 500）。</summary>
+    private async Task FormationChargeStopPhase()
+    {
+        (Node main, Player player) = await StartPhase("res://Game/Config/Characters/Warrior.tres");
+        FormationController formation = main.GetNode<FormationController>("Formation");
+        FormationMelee knight = formation.GetNode<FormationMelee>("KnightC");
+
+        player.GlobalPosition = new Vector3(0, 0.9f, -10);
+        await Frames(10);
+        player.GlobalPosition = new Vector3(0, 0.2f, -12f);
+        player.Rotation = Vector3.Zero;
+        await Frames(10);
+        Vector3 knightBefore = knight.GlobalPosition;
+        float maxPush = 0f;
+        PressRelease("skill_2");
+        for (int i = 0; i < 18; i++) // 冲锋 0.42s ≈ 25 帧，取窗口峰值
+        {
+            await Frames(2);
+            maxPush = Mathf.Max(maxPush, (knight.GlobalPosition - knightBefore).Length());
+        }
+
+        Check(maxPush < 1.5f, $"500 骑士冲锋窗口内峰值位移 {maxPush:F2}m < 1.5m（推不动）");
+        float stopDist = (player.GlobalPosition - knight.GlobalPosition).Length();
+        Check(
+            stopDist > 0.8f && stopDist < 1.7f,
+            $"冲锋被骑士挡停在 {stopDist:F2}m（重装是一道墙）"
+        );
+        Check(!player.IsCastingSkill, "冲锋已结束");
+
+        await EndPhase(main);
+    }
+
+    /// <summary>阵型⑥：贴侧绕行被边缘前排蹭血（绕后需付出代价）。</summary>
+    private async Task FormationFlankPhase()
+    {
+        (Node main, Player player) = await StartPhase("res://Game/Config/Characters/Warrior.tres");
+        FormationController formation = main.GetNode<FormationController>("Formation");
+        HealthComponent php = main.GetNode<HealthComponent>("Player/HealthComponent");
+
+        player.GlobalPosition = new Vector3(8, 0.9f, -16.5f); // 正东激活：阵型面向东
+        await Frames(80); // 等成员走位到东侧朝向的新槽位再开始侧绕
+
+        // 沿前排队侧 1.1m 处纵穿（全程偏差 < 55°，阵型不转）
+        player.GlobalPosition = new Vector3(2.6f, 0.9f, -18f);
+        await Frames(5);
+        float hpBefore = php.CurrentHealth;
+        Input.ActionPress("move_forward");
+        await Frames(60);
+        Input.ActionRelease("move_forward");
+        Check(
+            php.CurrentHealth < hpBefore,
+            $"贴侧绕行被边缘前排蹭血：{hpBefore} -> {php.CurrentHealth}（侧面绕行有成本）"
+        );
+
+        await EndPhase(main);
+    }
 
     // —— 工具 ——
 
