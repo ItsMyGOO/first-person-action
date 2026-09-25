@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace GodotGameTemplate.Combat;
+namespace FirstPersonAction.Combat;
 
 public enum ComboStagePhase
 {

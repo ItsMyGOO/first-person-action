@@ -1,6 +1,6 @@
 using System;
 
-namespace GodotGameTemplate.Combat;
+namespace FirstPersonAction.Combat;
 
 /// <summary>
 /// 蓄力累计器（弓手拉弓；纯逻辑可单测）。

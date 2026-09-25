@@ -1,7 +1,7 @@
+using FirstPersonAction.Combat;
 using Godot;
-using GodotGameTemplate.Combat;
 
-namespace GodotGameTemplate.UI;
+namespace FirstPersonAction.UI;
 
 /// <summary>
 /// 冲刺速度线（M5 §2，纯表现层）：挂 Hud CanvasLayer 顶层的全屏 ColorRect，

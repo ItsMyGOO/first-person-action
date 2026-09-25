@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
+using FirstPersonAction.Core;
 using Godot;
-using GodotGameTemplate.Core;
 
-namespace GodotGameTemplate.Combat;
+namespace FirstPersonAction.Combat;
 
 /// <summary>一次命中携带的数据。伤害/韧性/击退由攻击方定义，受击方消费。</summary>
 public struct HitData
@@ -33,7 +33,11 @@ public static class MeleeArcQuery
 {
     private const float DefaultHeightTolerance = 1.5f;
 
-    /// <summary>返回位于 origin 前方锥形内的目标（水平面判定，忽略高度差 ≤ 容差）。</summary>
+    /// <summary>
+    /// 返回位于 origin 前方锥形内的目标（水平面判定，忽略高度差 ≤ 容差）。
+    /// exclude 为攻击发起者自身——显式排除，不依赖「距离过近」的巧合守卫。
+    /// results 传入则复用（Clear 后填充），省去主动帧窗口的每帧分配。
+    /// </summary>
     public static List<T> FindHits<T>(
         Vector3 origin,
         Vector3 flatForward,
@@ -41,15 +45,23 @@ public static class MeleeArcQuery
         float halfAngleDeg,
         IList<T> targets,
         Func<T, Vector3> centerOf,
-        float heightTolerance = DefaultHeightTolerance
+        float heightTolerance = DefaultHeightTolerance,
+        T? exclude = null,
+        List<T>? results = null
     )
         where T : class
     {
-        var results = new List<T>();
+        results ??= new List<T>();
+        results.Clear();
         Vector3 forward = new Vector3(flatForward.X, 0f, flatForward.Z).Normalized();
 
         foreach (T target in targets)
         {
+            if (ReferenceEquals(target, exclude))
+            {
+                continue;
+            }
+
             Vector3 center = centerOf(target);
             if (Mathf.Abs(center.Y - origin.Y) > heightTolerance)
             {

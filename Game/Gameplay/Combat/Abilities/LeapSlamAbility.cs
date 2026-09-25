@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using Godot;
 
-namespace GodotGameTemplate.Combat;
+namespace FirstPersonAction.Combat;
 
 /// <summary>
 /// 跳劈：向前弧线强制位移（起跳+霸体），落地瞬间 360° 范围结算 + 击退。

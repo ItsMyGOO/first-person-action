@@ -1,6 +1,6 @@
 using Godot;
 
-namespace GodotGameTemplate.Combat;
+namespace FirstPersonAction.Combat;
 
 /// <summary>
 /// 阵型朝向滞回（M5 §1.1，文档 §12）：玩家方向与当前阵型朝向偏差超过

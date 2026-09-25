@@ -1,6 +1,6 @@
 using System;
 
-namespace GodotGameTemplate.Core;
+namespace FirstPersonAction.Core;
 
 /// <summary>
 /// 带种子的独立随机源。约定：任何影响模拟结果的随机数（伤害浮动、AI 决策）

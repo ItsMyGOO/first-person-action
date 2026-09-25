@@ -1,8 +1,8 @@
 using System.Collections.Generic;
+using FirstPersonAction.Core;
 using Godot;
-using GodotGameTemplate.Core;
 
-namespace GodotGameTemplate.Combat;
+namespace FirstPersonAction.Combat;
 
 /// <summary>
 /// 阵型前排近战（M5 §1.3，盾兵/骑士共用类）：驻守槽位不离槽追击（槽位即 leash）；

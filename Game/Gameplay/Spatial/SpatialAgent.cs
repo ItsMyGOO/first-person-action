@@ -1,6 +1,6 @@
 using Godot;
 
-namespace GodotGameTemplate.Spatial;
+namespace FirstPersonAction.Spatial;
 
 /// <summary>
 /// 单位的玩法空间参数（阵型文档第 5 节 SpatialState）。

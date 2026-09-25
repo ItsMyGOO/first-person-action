@@ -1,4 +1,4 @@
-namespace GodotGameTemplate.Combat;
+namespace FirstPersonAction.Combat;
 
 /// <summary>
 /// v1 全部战斗调参常量。集中一处便于手感调校；
@@ -76,6 +76,9 @@ public static class CombatTuning
     public const float StaggerSeconds = 0.28f;
     public const float DownedSeconds = 2.5f;
     public const float KnockbackDuration = 0.25f;
+
+    // —— 玩家死亡（冻结→低垂→延迟重载；正式死亡UI/检查点在打磨期） ——
+    public const float DeathReloadDelaySeconds = 1.5f;
 
     // —— 弓箭手瞄准 ——
     public const float BaseFov = 90f;

@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using Godot;
 
-namespace GodotGameTemplate.Core;
+namespace FirstPersonAction.Core;
 
 /// <summary>
 /// 技能改键底层（M4 §3，本次无 UI）：启动时加载 user://keybinds.cfg 并应用到 InputMap，
@@ -117,10 +117,21 @@ public partial class KeybindManager : Node
 
         foreach (string action in config.GetSectionKeys(Section) ?? [])
         {
+            // cfg 可被手改：未知动作/非法键值必须报错跳过，静默写入会产生无效绑定
+            if (!InputMap.HasAction(action))
+            {
+                GD.PushError($"[KeybindManager] keybinds.cfg 中的动作「{action}」不存在，已忽略");
+                continue;
+            }
+
             long keycode = config.GetValue(Section, action, 0L).AsInt64();
-            if (keycode != 0)
+            if (keycode != 0 && System.Enum.IsDefined(typeof(Key), keycode))
             {
                 Rebind(action, (Key)keycode);
+            }
+            else
+            {
+                GD.PushError($"[KeybindManager] 动作「{action}」的键值 {keycode} 非法，保持默认");
             }
         }
     }

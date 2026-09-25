@@ -1,8 +1,8 @@
 using System.Collections.Generic;
+using FirstPersonAction.Core;
 using Godot;
-using GodotGameTemplate.Core;
 
-namespace GodotGameTemplate.Combat;
+namespace FirstPersonAction.Combat;
 
 /// <summary>
 /// 远程敌人（M4 §4）：风筝距离带 [7,11]m——<7 后退、>11 接近、区间驻停留；
@@ -13,7 +13,7 @@ namespace GodotGameTemplate.Combat;
 /// </summary>
 public partial class RangedEnemy : EnemyAI
 {
-    public static readonly uint ArrowMask = 0b011; // 世界(第1层) + 玩家(第2层)
+    public static readonly uint ArrowMask = PhysicsLayers.EnemyProjectileMask; // 世界+玩家层（无友伤）
 
     private static readonly Color AimLineColor = new(1f, 0.12f, 0.12f);
 

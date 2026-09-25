@@ -1,7 +1,7 @@
-using GodotGameTemplate.Core;
+using FirstPersonAction.Core;
 using Xunit;
 
-namespace GodotGameTemplate.Tests;
+namespace FirstPersonAction.Tests;
 
 public class SeededRandomTests
 {

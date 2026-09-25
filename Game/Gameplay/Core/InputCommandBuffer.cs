@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace GodotGameTemplate.Core;
+namespace FirstPersonAction.Core;
 
 /// <summary>
 /// 动作输入缓冲：动作命令压入后 BufferWindowMs 内有效，被消费或过期即清除。
@@ -34,17 +34,29 @@ public sealed class InputCommandBuffer
     public bool TryConsume(InputCommandKind kind, long nowMs, out InputCommand command)
     {
         command = default;
-        _entries.RemoveAll(e => nowMs - e.PushedAtMs > BufferWindowMs);
 
-        int index = _entries.FindIndex(e => e.Command.Kind == kind);
-        if (index < 0)
+        // 热路径（每物理帧被调用多次）手写倒序遍历，避免 lambda 闭包的委托分配
+        for (int i = _entries.Count - 1; i >= 0; i--)
         {
-            return false;
+            if (nowMs - _entries[i].PushedAtMs > BufferWindowMs)
+            {
+                _entries.RemoveAt(i);
+            }
         }
 
-        command = _entries[index].Command;
-        _entries.RemoveAt(index);
-        return true;
+        for (int i = 0; i < _entries.Count; i++)
+        {
+            if (_entries[i].Command.Kind != kind)
+            {
+                continue;
+            }
+
+            command = _entries[i].Command;
+            _entries.RemoveAt(i);
+            return true;
+        }
+
+        return false;
     }
 
     public void Clear() => _entries.Clear();

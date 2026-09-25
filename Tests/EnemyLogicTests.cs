@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
+using FirstPersonAction.Combat;
 using Godot;
-using GodotGameTemplate.Combat;
 using Xunit;
 
-namespace GodotGameTemplate.Tests;
+namespace FirstPersonAction.Tests;
 
 public class AttackCycleTests
 {

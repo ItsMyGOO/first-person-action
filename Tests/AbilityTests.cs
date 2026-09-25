@@ -1,10 +1,10 @@
 using System.Collections.Generic;
+using FirstPersonAction.Combat;
+using FirstPersonAction.Core;
 using Godot;
-using GodotGameTemplate.Combat;
-using GodotGameTemplate.Core;
 using Xunit;
 
-namespace GodotGameTemplate.Tests;
+namespace FirstPersonAction.Tests;
 
 public class ForcedMovementTests
 {

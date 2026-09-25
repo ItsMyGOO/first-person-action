@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-test:
+    name: 构建与单元测试
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: 构建
+        run: dotnet build FirstPersonAction.csproj -c Debug --nologo
+
+      - name: 单元测试
+        run: >
+          dotnet test Tests/GameplayTests.csproj -c Debug --nologo
+          --logger "trx;LogFileName=unit-tests.trx"
+
+      - name: 上传测试结果
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-results
+          path: Tests/TestResults/*.trx
+          if-no-files-found: ignore
+
+  smoke:
+    name: 无头冒烟测试
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: 缓存 Godot 4.6.1 .NET
+        id: godot-cache
+        uses: actions/cache@v4
+        with:
+          path: godot
+          key: godot-4.6.1-mono-linux-x86_64
+
+      - name: 下载 Godot 4.6.1 .NET
+        if: steps.godot-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p godot
+          curl -L -o godot.zip \
+            https://github.com/godotengine/godot/releases/download/4.6.1-stable/Godot_v4.6.1-stable_mono_linux_x86_64.zip
+          unzip -q godot.zip -d godot
+          rm godot.zip
+
+      - name: 导入资源（含 C# 构建）
+        run: godot/Godot_v4.6.1-stable_mono_linux_x86_64/Godot_v4.6.1-stable_mono_linux.x86_64 --headless --path . --import
+
+      - name: 冒烟测试
+        run: |
+          set -o pipefail
+          godot/Godot_v4.6.1-stable_mono_linux_x86_64/Godot_v4.6.1-stable_mono_linux.x86_64 \
+            --headless --path . res://Game/Scenes/Debug/CombatSmokeTest.tscn 2>&1 | tee smoke.log
+
+      - name: 上传冒烟日志
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-log
+          path: smoke.log
+
+  format:
+    name: 格式检查
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - run: dotnet tool install -g csharpier --version 1.3.0
+
+      - name: csharpier check
+        run: csharpier check .

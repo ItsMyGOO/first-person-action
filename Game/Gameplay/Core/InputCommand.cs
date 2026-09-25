@@ -1,6 +1,6 @@
 using Godot;
 
-namespace GodotGameTemplate.Core;
+namespace FirstPersonAction.Core;
 
 /// <summary>语义化输入命令种类。联机时命令序列化后发往房主权威端。</summary>
 public enum InputCommandKind : byte

@@ -23,3 +23,11 @@
 *.mp3 binary
 *.ttf binary
 *.otf binary
+
+# 3D / video binaries (content pipeline to come)
+*.glb binary
+*.gltf binary
+*.fbx binary
+*.mp4 binary
+*.webm binary
+*.res binary

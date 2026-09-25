@@ -1,6 +1,6 @@
 using System;
 
-namespace GodotGameTemplate.Core;
+namespace FirstPersonAction.Core;
 
 /// <summary>
 /// 稳定的逻辑实体标识。模拟层一切跨实体引用都通过它而非节点引用，

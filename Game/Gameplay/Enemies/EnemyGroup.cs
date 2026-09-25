@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using Godot;
 
-namespace GodotGameTemplate.Combat;
+namespace FirstPersonAction.Combat;
 
 /// <summary>
 /// 群体 AI（M4 §4）：聚合激活——玩家进入半径内全体敌人开始行动（不写行为树）；

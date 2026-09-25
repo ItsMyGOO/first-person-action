@@ -1,6 +1,6 @@
 using Godot;
 
-namespace GodotGameTemplate.Combat;
+namespace FirstPersonAction.Combat;
 
 /// <summary>
 /// 技能运行时基类（规格第 2 节 Ability）：管理 CD 与施放状态，

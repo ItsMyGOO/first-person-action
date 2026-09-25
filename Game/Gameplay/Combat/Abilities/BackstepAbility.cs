@@ -1,6 +1,6 @@
 using Godot;
 
-namespace GodotGameTemplate.Combat;
+namespace FirstPersonAction.Combat;
 
 /// <summary>
 /// 后跳：向镜头反方向快速位移。无伤害，主要用于打断弓手的瞄准/蓄力

@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using Godot;
 
-namespace GodotGameTemplate.Spatial;
+namespace FirstPersonAction.Spatial;
 
 /// <summary>
 /// 逻辑空间解析（阵型文档第 5/6/19/20 节；规格第 1 节 Movement Pipeline 的空间层）。

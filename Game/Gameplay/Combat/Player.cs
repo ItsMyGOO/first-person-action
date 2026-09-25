@@ -1,10 +1,10 @@
 using System.Collections.Generic;
+using FirstPersonAction.Characters;
+using FirstPersonAction.Core;
+using FirstPersonAction.Spatial;
 using Godot;
-using GodotGameTemplate.Characters;
-using GodotGameTemplate.Core;
-using GodotGameTemplate.Spatial;
 
-namespace GodotGameTemplate.Combat;
+namespace FirstPersonAction.Combat;
 
 /// <summary>
 /// 玩家角色控制器（第一人称，规格第 3 节）。
@@ -34,11 +34,12 @@ public partial class Player : CharacterBody3D, IAbilityContext, ICombatTarget
 
     private readonly InputCommandBuffer _buffer = new();
     private readonly List<Ability> _abilities = new();
+    private readonly List<ICombatTarget> _targetBuffer = new(); // 主动帧窗口目标复用（免每帧分配）
+    private readonly List<ICombatTarget> _hitBuffer = new();
     private Ability? _activeAbility;
     private ForcedMovement? _forced;
     private bool _superArmor;
     private MeleeComboTracker _combo = null!;
-    private float _timeAccum;
     private long _nowMs;
 
     // —— 动作层状态机 ——
@@ -100,6 +101,12 @@ public partial class Player : CharacterBody3D, IAbilityContext, ICombatTarget
     public bool IsInvulnerable =>
         _action == ActionState.Dodge && _dodgeElapsed < CombatTuning.DodgeInvulnerableSeconds;
 
+    /// <summary>霸体中（冲锋/跳劈/旋风斩）：受击只扣血，不打断施法与连段。</summary>
+    public bool IsSuperArmor => _superArmor;
+
+    /// <summary>已死亡（死亡状态机冻结动作与移动，延迟重载关卡）。</summary>
+    public bool IsDead => _health.IsDead;
+
     /// <summary>血量比例（0~1），HUD 玩家血条只读。</summary>
     public float Health01 =>
         _health.MaxHealth > 0f ? _health.CurrentHealth / _health.MaxHealth : 0f;
@@ -107,9 +114,20 @@ public partial class Player : CharacterBody3D, IAbilityContext, ICombatTarget
     public override void _Ready()
     {
         _def = Definition ?? GameSession.Instance!.EnsureSelected();
-        foreach (SkillKind kind in _def.Skills)
+        foreach (int id in _def.SkillIds)
         {
-            _abilities.Add(AbilityFactory.Create(kind));
+            if (System.Enum.IsDefined(typeof(SkillKind), id))
+            {
+                _abilities.Add(AbilityFactory.Create((SkillKind)id));
+            }
+            else
+            {
+                // .tres 里的 SkillIds 是裸 int，配错值必须在启动时报出来而不是
+                // 崩在 AbilityFactory 的 ArgumentOutOfRangeException
+                GD.PushError(
+                    $"[Player] 角色「{_def.DisplayName}」SkillIds 含非法值 {id}，已跳过该技能槽"
+                );
+            }
         }
 
         _charge = new ChargeAccumulator(_def.ChargeFullSeconds);
@@ -129,8 +147,33 @@ public partial class Player : CharacterBody3D, IAbilityContext, ICombatTarget
         AddToGroup(CombatTuning.TargetGroup); // 敌人 AI 与敌方投射物需要找到玩家
     }
 
-    /// <summary>v1 玩家死亡：简单重载当前场景（受击状态机/死亡表现留到打磨期）。</summary>
-    private void OnDied() => Callable.From(() => GetTree().ReloadCurrentScene()).CallDeferred();
+    /// <summary>
+    /// 死亡状态机：冻结动作与移动 → 相机低垂 → 延迟重载关卡。
+    /// 重载前的卸载竞态（冒烟测试提前 QueueFree 关卡、切场景）由有效性守卫兜住。
+    /// </summary>
+    private async void OnDied()
+    {
+        BreakAim();
+        _combo.Reset();
+        if (_action == ActionState.Skill && _activeAbility != null)
+        {
+            EndAbility();
+        }
+
+        Velocity = Vector3.Zero;
+
+        // processAlways=false：暂停时冻结倒计时；ignoreTimeScale=true：不被 hit-stop 时间缩放拖长
+        await ToSignal(
+            GetTree().CreateTimer(CombatTuning.DeathReloadDelaySeconds, false, false, true),
+            SceneTreeTimer.SignalName.Timeout
+        );
+        if (!IsInstanceValid(this) || !IsInsideTree())
+        {
+            return; // 关卡已被外部卸载（冒烟清理/场景切换），重载交还给流程层
+        }
+
+        GetTree().ReloadCurrentScene();
+    }
 
     public override void _UnhandledInput(InputEvent @event)
     {
@@ -146,15 +189,18 @@ public partial class Player : CharacterBody3D, IAbilityContext, ICombatTarget
                 Mathf.DegToRad(CombatTuning.PitchClampDeg)
             );
         }
-        else if (@event.IsActionPressed("ui_cancel"))
-        {
-            Input.MouseMode = Input.MouseModeEnum.Visible;
-        }
+
+        // ui_cancel（ESC）由 PauseMenu autoload 接管：暂停菜单 + 鼠标重捕获
     }
 
     public override void _Process(double delta)
     {
         float dt = (float)delta;
+        if (IsDead)
+        {
+            _pitch = Mathf.MoveToward(_pitch, -0.45f, 1.2f * dt); // 死亡相机低垂
+        }
+
         Rotation = new Vector3(0f, _yaw, 0f);
         _head.Rotation = new Vector3(_pitch, 0f, 0f);
 
@@ -166,8 +212,16 @@ public partial class Player : CharacterBody3D, IAbilityContext, ICombatTarget
     public override void _PhysicsProcess(double delta)
     {
         float dt = (float)delta;
-        _timeAccum += dt;
-        _nowMs = (long)(_timeAccum * 1000f);
+        _nowMs = (long)Time.GetTicksMsec(); // 引擎毫秒钟：长时运行无 float 累计精度衰减
+
+        if (IsDead)
+        {
+            // 死亡冻结：只剩重力与贴地滑动，动作/移动/视角模型全部停摆
+            float vy = IsOnFloor() ? -1f : Velocity.Y - CombatTuning.Gravity * dt;
+            Velocity = new Vector3(0f, vy, 0f);
+            MoveAndSlide();
+            return;
+        }
 
         TickInputEdges();
         TickActions(dt);
@@ -336,11 +390,13 @@ public partial class Player : CharacterBody3D, IAbilityContext, ICombatTarget
             _combo.Reset(); // 技能打断连段
         }
 
-        _activeAbility = _abilities[index];
-        _action = ActionState.Skill;
-        if (_activeAbility.TryCast(this))
+        // 先 TryCast 成功再提交状态——失败路径不发出没有 SkillStarted 配对的 SkillEnded
+        Ability ability = _abilities[index];
+        if (ability.TryCast(this))
         {
-            SkillStarted?.Invoke(_activeAbility.Def.Kind);
+            _activeAbility = ability;
+            _action = ActionState.Skill;
+            SkillStarted?.Invoke(ability.Def.Kind);
         }
     }
 
@@ -376,7 +432,9 @@ public partial class Player : CharacterBody3D, IAbilityContext, ICombatTarget
             CombatTuning.AttackRange,
             CombatTuning.AttackHalfAngleDeg,
             targets,
-            t => t.Center
+            t => t.Center,
+            exclude: this, // 显式排除自己（玩家在 TargetGroup 且可命中），不依赖距离巧合
+            results: _hitBuffer
         );
 
         if (hits.Count == 0)
@@ -403,18 +461,19 @@ public partial class Player : CharacterBody3D, IAbilityContext, ICombatTarget
         }
     }
 
+    /// <summary>收集可命中目标到复用缓冲（当帧消费，勿持有——每帧 Clear 重填）。</summary>
     private List<ICombatTarget> FindTargets()
     {
-        var result = new List<ICombatTarget>();
+        _targetBuffer.Clear();
         foreach (Node node in GetTree().GetNodesInGroup(CombatTuning.TargetGroup))
         {
             if (node is ICombatTarget target && target.CanBeHit)
             {
-                result.Add(target);
+                _targetBuffer.Add(target);
             }
         }
 
-        return result;
+        return _targetBuffer;
     }
 
     private void StartDodge()
@@ -610,12 +669,54 @@ public partial class Player : CharacterBody3D, IAbilityContext, ICombatTarget
         HitstopManager.Request(_activeAbility?.Def.HitstopMs ?? CombatTuning.HitstopMs);
     }
 
-    // —— ICombatTarget（敌方近战/箭矢的受击面；v1 只扣血，无硬直/击退） ——
+    // —— ICombatTarget（敌方近战/箭矢的受击面） ——
     // 注：玩家原点在胶囊几何中心（落地后 GlobalPosition.y≈0.9），上偏 0.3m = 世界胸口高度 1.2m
 
     Vector3 ICombatTarget.Center => GlobalPosition + Vector3.Up * 0.3f;
 
-    bool ICombatTarget.CanBeHit => !_health.IsDead;
+    /// <summary>无敌帧期间不可命中（M3 验收项接线）：敌方近战锥形与箭矢都走此属性。</summary>
+    bool ICombatTarget.CanBeHit => !_health.IsDead && !IsInvulnerable;
 
-    void ICombatTarget.ApplyHit(in HitData hit) => _health.ApplyDamage(hit.Damage);
+    void ICombatTarget.ApplyHit(in HitData hit)
+    {
+        if (_health.IsDead || IsInvulnerable)
+        {
+            return; // 闪避无敌帧内完全免伤
+        }
+
+        _health.ApplyDamage(hit.Damage);
+
+        if (_health.IsDead)
+        {
+            return; // OnDied 已接管死亡流程
+        }
+
+        // 受击打断规则（霸体接线）：霸体中（冲锋/跳劈/旋风斩）照常行动；
+        // 否则被打断连段/瞄准/施法。受击硬直与击退表现留到打磨期。
+        if (IsSuperArmor)
+        {
+            return;
+        }
+
+        BreakAim();
+        _combo.Reset();
+        if (_action == ActionState.Skill && _activeAbility != null)
+        {
+            EndAbility();
+        }
+    }
+
+    // —— 冒烟测试缝：无头模式无法注入鼠标事件，直接读写视角（Debug 命名空间使用） ——
+
+    internal float DebugYaw
+    {
+        get => _yaw;
+        set => _yaw = value;
+    }
+
+    internal float DebugPitch
+    {
+        get => _pitch;
+        set => _pitch = value;
+    }
 }

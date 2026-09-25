@@ -1,4 +1,4 @@
-namespace GodotGameTemplate.Combat;
+namespace FirstPersonAction.Combat;
 
 public enum KiteAction
 {

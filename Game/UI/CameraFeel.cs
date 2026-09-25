@@ -1,7 +1,7 @@
+using FirstPersonAction.Combat;
 using Godot;
-using GodotGameTemplate.Combat;
 
-namespace GodotGameTemplate.UI;
+namespace FirstPersonAction.UI;
 
 /// <summary>
 /// 相机手感组件（M4 §5，纯表现层）：接管 FOV 与震动——

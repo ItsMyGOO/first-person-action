@@ -1,44 +1,113 @@
+using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
+using FirstPersonAction.Characters;
+using FirstPersonAction.Combat;
+using FirstPersonAction.Core;
+using FirstPersonAction.UI;
 using Godot;
-using GodotGameTemplate.Characters;
-using GodotGameTemplate.Combat;
-using GodotGameTemplate.Core;
-using GodotGameTemplate.UI;
 
-namespace GodotGameTemplate.DebugTools;
+namespace FirstPersonAction.DebugTools;
 
 /// <summary>
-/// 引擎内战斗冒烟测试（无头可跑，CI 回归）。覆盖 M3 修订版全部验收项：
+/// 引擎内战斗冒烟测试（无头可跑，CI 回归）。覆盖 M3 修订版全部验收项 +
+/// 商业化修复项（无敌帧/霸体打断/死亡状态机）：
 /// 连段/逻辑阻挡/冲锋推挤/重单位挡停/跳劈/旋风斩/弓手快速箭与三级蓄力/打断规则。
 /// 每个阶段用全新的 Main 实例（技能 CD/木桩状态互不干扰），输入注入用
 /// Input.ActionPress/ActionRelease（与控制器的物理帧边沿轮询匹配）。
-/// 运行：godot --headless --path . res://Game/Scenes/Debug/CombatSmokeTest.tscn --quit-after 1800
+/// 运行：godot --headless --path . res://Game/Scenes/Debug/CombatSmokeTest.tscn
+/// 退出码：0=全过，1=有失败/崩溃，2=看门狗超时。
 /// </summary>
 public partial class CombatSmokeTestRunner : Node
 {
+    /// <summary>看门狗：整体超时秒数。防阶段卡死后空转到 --quit-after 造成的假绿退出码 0。</summary>
+    private const float WatchdogSeconds = 240f;
+
+    /// <summary>
+    /// 执行数守卫下限：正常跑完应远超此数。低于它说明 Check 大面积没执行
+    /// （如阶段异常逃逸、断言链被跳过），即使全部「通过」也判失败。
+    /// </summary>
+    private const int MinExecutedChecks = 40;
+
     private int _failures;
+    private int _executedChecks;
+    private bool _finished;
 
     public override async void _Ready()
     {
-        await WarriorCombatPhase();
-        await WarriorSkillPhase();
-        await HeavyBlockPhase();
-        await ArcherPhase();
-        await ArrowDirectionPhase();
-        await KeybindPhase();
-        await RangedEnemyPhase();
-        await EnemyGroupPhase();
-        await FeelPhase();
-        await FormationPhase();
-        await FormationYawPhase();
-        await FormationChargePushPhase();
-        await FormationChargeStopPhase();
-        await FormationFlankPhase();
-        await SpeedLinesPhase();
+        GetTree().CreateTimer(WatchdogSeconds, true, false, true).Timeout += () =>
+        {
+            if (_finished)
+            {
+                return;
+            }
+
+            GD.PrintErr(
+                $"[SMOKE] 看门狗超时（{WatchdogSeconds:F0}s）：已执行 {_executedChecks} 项检查"
+            );
+            GetTree().Quit(2);
+        };
+
+        // 冒烟会写/删 user://keybinds.cfg——先备份真实玩家键位，结束后无条件还原
+        byte[]? keybindBackup = BackupUserKeybinds();
+        try
+        {
+            List<(string Name, Func<Task> Phase)> phases = BuildPhases();
+            foreach ((string name, Func<Task> phase) in phases)
+            {
+                try
+                {
+                    await phase();
+                }
+                catch (Exception e)
+                {
+                    // 单阶段崩溃只作废该阶段，后续阶段继续——异常逃逸出 async void
+                    // 曾会让 Quit(1) 永不执行、进程假绿退出
+                    _failures++;
+                    GD.PrintErr($"[SMOKE][CRASH] 阶段「{name}」异常中断（后续阶段继续）：{e}");
+                }
+            }
+        }
+        finally
+        {
+            RestoreUserKeybinds(keybindBackup);
+        }
+
+        _finished = true;
+        if (_executedChecks < MinExecutedChecks)
+        {
+            _failures++;
+            GD.PrintErr(
+                $"[SMOKE][FAIL] 执行数守卫：仅执行 {_executedChecks} 项检查（< {MinExecutedChecks}），断言链疑似大面积未运行"
+            );
+        }
 
         GD.Print(_failures == 0 ? "[SMOKE] 全部通过" : $"[SMOKE] {_failures} 项失败");
         GetTree().Quit(_failures == 0 ? 0 : 1);
     }
+
+    private List<(string Name, Func<Task> Phase)> BuildPhases() =>
+        new()
+        {
+            ("战士基础", WarriorCombatPhase),
+            ("战士技能", WarriorSkillPhase),
+            ("重单位挡停", HeavyBlockPhase),
+            ("弓手连段", ArcherPhase),
+            ("箭矢方向回归", ArrowDirectionPhase),
+            ("改键", KeybindPhase),
+            ("远程敌人", RangedEnemyPhase),
+            ("编组激活", EnemyGroupPhase),
+            ("手感事件", FeelPhase),
+            ("阵型主链路", FormationPhase),
+            ("阵型朝向滞回", FormationYawPhase),
+            ("阵型冲锋推挡-盾", FormationChargePushPhase),
+            ("阵型冲锋推挡-骑", FormationChargeStopPhase),
+            ("阵型侧翼", FormationFlankPhase),
+            ("速度线", SpeedLinesPhase),
+            ("闪避无敌帧", DodgeInvulnPhase),
+            ("霸体打断", SuperArmorPhase),
+            ("玩家死亡", PlayerDeathPhase),
+        };
 
     // —— 阶段 ——
 
@@ -160,13 +229,8 @@ public partial class CombatSmokeTestRunner : Node
         player.GlobalPosition = dummy.GlobalPosition + new Vector3(0, 0, 2.5f);
         player.Rotation = Vector3.Zero;
         // 低头 ~20°（相机在 2.5m 高，木桩胶囊在 0~1.8m，平射会从头顶飞过）。
-        // 无头模式下鼠标事件注入不可靠，测试直接设私有俯仰字段。
-        typeof(Player)
-            .GetField(
-                "_pitch",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
-            )!
-            .SetValue(player, -0.35f);
+        // 无头模式下鼠标事件注入不可靠，测试直接写视角（Player 的 internal 测试缝）
+        player.DebugPitch = -0.35f;
         await Frames(10);
 
         // 快速箭（非瞄准左键）
@@ -216,11 +280,9 @@ public partial class CombatSmokeTestRunner : Node
 
         // 玩家站到木桩北侧（-Z），yaw 转 180° 后镜头朝 +Z，木桩位于镜头正前方
         player.GlobalPosition = dummy.GlobalPosition + new Vector3(0, 0.2f, -2.5f);
-        System.Reflection.BindingFlags flags =
-            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
-        typeof(Player).GetField("_yaw", flags)!.SetValue(player, Mathf.Pi);
-        typeof(Player).GetField("_pitch", flags)!.SetValue(player, -0.35f);
-        await Frames(10); // 等 _Process 把反射设置的偏航写入变换
+        player.DebugYaw = Mathf.Pi;
+        player.DebugPitch = -0.35f;
+        await Frames(10); // 等 _Process 把测试缝设置的偏航写入变换
 
         float before = hp.CurrentHealth;
         PressRelease("attack"); // 快速箭
@@ -402,6 +464,83 @@ public partial class CombatSmokeTestRunner : Node
         );
 
         await EndPhase(main);
+    }
+
+    /// <summary>无敌帧（商业修复 M3 遗留断线）：闪避前 0.25s 内直接受击免伤；
+    /// 闪避结束后恢复可命中。直接调 ApplyHit 避免敌箭时序抖动。</summary>
+    private async Task DodgeInvulnPhase()
+    {
+        (Node main, Player player) = await StartPhase("res://Game/Config/Characters/Warrior.tres");
+        HealthComponent php = main.GetNode<HealthComponent>("Player/HealthComponent");
+        ICombatTarget target = player;
+
+        float before = php.CurrentHealth;
+        PressRelease("dodge");
+        await Frames(5); // < 0.25s（15 帧）无敌窗口内
+        Check(player.IsInvulnerable, "闪避前段处于无敌窗口");
+        target.ApplyHit(new HitData { Damage = 10f });
+        Check(php.CurrentHealth == before, $"无敌帧内受击免伤：HP 保持 {php.CurrentHealth}");
+
+        await Frames(30); // 累计 35 帧 > 0.40s 闪避总时长，无敌窗口早已结束
+        Check(!player.IsInvulnerable, "闪避后段无敌窗口结束");
+        target.ApplyHit(new HitData { Damage = 10f });
+        Check(php.CurrentHealth == before - 10f, $"无敌结束后恢复可命中：HP {php.CurrentHealth}");
+
+        await EndPhase(main);
+    }
+
+    /// <summary>霸体（商业修复 M3 遗留断线）：冲锋中受击仍扣血但不打断；
+    /// 无霸体时受击打断连段。</summary>
+    private async Task SuperArmorPhase()
+    {
+        (Node main, Player player) = await StartPhase("res://Game/Config/Characters/Warrior.tres");
+        HealthComponent php = main.GetNode<HealthComponent>("Player/HealthComponent");
+        ICombatTarget target = player;
+
+        // 冲锋（skill_2，0.42s=25 帧）霸体：受击不打断
+        player.Rotation = Vector3.Zero;
+        PressRelease("skill_2");
+        await Frames(8);
+        Check(player.IsSuperArmor, "冲锋期间霸体生效");
+        float before = php.CurrentHealth;
+        target.ApplyHit(new HitData { Damage = 10f });
+        await Frames(3);
+        Check(player.IsChargeDashing, "霸体受击不打断冲锋");
+        Check(php.CurrentHealth == before - 10f, $"霸体受击仍扣血：HP {php.CurrentHealth}");
+        await Frames(50); // 等冲锋完整收尾
+
+        // 无霸体：连段中被受击打断
+        PressRelease("attack");
+        await Frames(15); // 进入主动段（前摇 0.10s + 主动 0.12s）
+        Check(player.IsAttacking, "连段进行中");
+        target.ApplyHit(new HitData { Damage = 10f });
+        await Frames(2);
+        Check(!player.IsAttacking, "无霸体受击打断连段");
+
+        await EndPhase(main);
+    }
+
+    /// <summary>死亡状态机（商业修复）：死亡后不可命中、移动冻结；
+    /// 1.5s 重载计时未到即卸载场景——重载守卫应吞掉，不影响后续阶段。</summary>
+    private async Task PlayerDeathPhase()
+    {
+        (Node main, Player player) = await StartPhase("res://Game/Config/Characters/Warrior.tres");
+        HealthComponent php = main.GetNode<HealthComponent>("Player/HealthComponent");
+
+        Vector3 before = player.GlobalPosition;
+        php.ApplyDamage(999f);
+        await Frames(5);
+        Check(player.IsDead, "玩家死亡进入死亡状态");
+        Check(!((ICombatTarget)player).CanBeHit, "死亡后不可命中");
+
+        Input.ActionPress("move_forward"); // 死亡冻结：按住前进也不该移动
+        await Frames(30);
+        Input.ActionRelease("move_forward");
+        float moved = (player.GlobalPosition - before).Length();
+        Check(moved < 0.1f, $"死亡后移动冻结（位移 {moved:F3}m）");
+
+        await EndPhase(main); // 重载计时（90 帧）未到即卸载——守卫应跳过重载
+        await Frames(10);
     }
 
     private int CountShockwaves() =>
@@ -603,6 +742,7 @@ public partial class CombatSmokeTestRunner : Node
 
     private void Check(bool ok, string message)
     {
+        _executedChecks++;
         if (ok)
         {
             GD.Print($"[SMOKE][PASS] {message}");
@@ -612,6 +752,35 @@ public partial class CombatSmokeTestRunner : Node
             GD.PrintErr($"[SMOKE][FAIL] {message}");
             _failures++;
         }
+    }
+
+    // 冒烟与正式游戏共用 user:// 目录：改键阶段会写/删 keybinds.cfg，
+    // 备份还原防止测试销毁真实玩家键位
+    private static byte[]? BackupUserKeybinds()
+    {
+        if (!FileAccess.FileExists("user://keybinds.cfg"))
+        {
+            return null;
+        }
+
+        using FileAccess f = FileAccess.Open("user://keybinds.cfg", FileAccess.ModeFlags.Read);
+        return f?.GetBuffer((long)f.GetLength());
+    }
+
+    private static void RestoreUserKeybinds(byte[]? backup)
+    {
+        if (backup == null)
+        {
+            if (FileAccess.FileExists("user://keybinds.cfg"))
+            {
+                DirAccess.RemoveAbsolute(ProjectSettings.GlobalizePath("user://keybinds.cfg"));
+            }
+
+            return;
+        }
+
+        using FileAccess f = FileAccess.Open("user://keybinds.cfg", FileAccess.ModeFlags.Write);
+        f?.StoreBuffer(backup);
     }
 
     private void PressRelease(string action)

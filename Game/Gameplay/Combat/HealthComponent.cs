@@ -1,6 +1,6 @@
 using Godot;
 
-namespace GodotGameTemplate.Combat;
+namespace FirstPersonAction.Combat;
 
 /// <summary>血量组件：受击方通用。死亡只发信号，表现由宿主决定。</summary>
 public partial class HealthComponent : Node

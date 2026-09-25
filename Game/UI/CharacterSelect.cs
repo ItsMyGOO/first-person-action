@@ -1,7 +1,7 @@
+using FirstPersonAction.Core;
 using Godot;
-using GodotGameTemplate.Core;
 
-namespace GodotGameTemplate.UI;
+namespace FirstPersonAction.UI;
 
 /// <summary>启动选人界面：点选角色 → 写入 GameSession → 进入竞技场。</summary>
 public partial class CharacterSelect : Control

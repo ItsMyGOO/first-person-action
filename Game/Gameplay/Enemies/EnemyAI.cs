@@ -1,7 +1,8 @@
+using FirstPersonAction.Core;
+using FirstPersonAction.Spatial;
 using Godot;
-using GodotGameTemplate.Spatial;
 
-namespace GodotGameTemplate.Combat;
+namespace FirstPersonAction.Combat;
 
 /// <summary>
 /// 敌人基类（M4 §4，从 DummyEnemy 上移共性）：血量/受击状态机(复用 HitReactionMachine)/
@@ -174,7 +175,7 @@ public abstract partial class EnemyAI : CharacterBody3D, ICombatTarget
     /// <summary>占位死亡：关闭碰撞、退出空间系统、下沉后销毁（与木桩一致）。</summary>
     protected virtual void OnDied()
     {
-        SetCollisionLayerValue(3, false);
+        SetCollisionLayerValue(PhysicsLayers.Enemy, false);
         Active = false;
         Agent.RemoveFromGroup(SpatialAgent.GroupName);
         Tween tween = CreateTween();

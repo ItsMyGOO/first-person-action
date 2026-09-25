@@ -1,6 +1,6 @@
 using Godot;
 
-namespace GodotGameTemplate.Spatial;
+namespace FirstPersonAction.Spatial;
 
 /// <summary>
 /// 空间解析的快照体。SpatialSystem 每帧从 SpatialAgent 构建（Agent 非空时

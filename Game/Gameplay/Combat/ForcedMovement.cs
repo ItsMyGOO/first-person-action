@@ -1,7 +1,7 @@
 using System;
 using Godot;
 
-namespace GodotGameTemplate.Combat;
+namespace FirstPersonAction.Combat;
 
 public enum ForcedMovementEase
 {

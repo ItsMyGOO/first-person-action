@@ -1,9 +1,9 @@
 using System.Collections.Generic;
+using FirstPersonAction.Spatial;
 using Godot;
-using GodotGameTemplate.Spatial;
 using Xunit;
 
-namespace GodotGameTemplate.Tests;
+namespace FirstPersonAction.Tests;
 
 public class SpatialResolverTests
 {

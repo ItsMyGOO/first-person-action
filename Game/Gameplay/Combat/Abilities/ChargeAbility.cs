@@ -1,6 +1,6 @@
 using Godot;
 
-namespace GodotGameTemplate.Combat;
+namespace FirstPersonAction.Combat;
 
 /// <summary>
 /// 冲锋：直线快速位移 + 霸体。期间 CurrentMovementForce 拉到 PushForce——

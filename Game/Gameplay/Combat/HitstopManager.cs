@@ -1,6 +1,6 @@
 using Godot;
 
-namespace GodotGameTemplate.Combat;
+namespace FirstPersonAction.Combat;
 
 /// <summary>
 /// 全局 hit-stop（规格第 4 节）：命中瞬间极短时间缩放，既是手感核心也是

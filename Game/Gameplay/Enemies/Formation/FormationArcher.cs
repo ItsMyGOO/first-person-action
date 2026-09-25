@@ -1,6 +1,6 @@
 using Godot;
 
-namespace GodotGameTemplate.Combat;
+namespace FirstPersonAction.Combat;
 
 /// <summary>
 /// 阵型后排弓手/法师（M5 §1.3）：覆写移动意图为「槽位点站定」，
@@ -57,6 +57,6 @@ public partial class FormationArcher : RangedEnemy, IFormationMember
             Damage = ArrowDamage,
             PoiseDamage = ArrowPoiseDamage,
             Knockback = direction * 2f,
-            Source = GodotGameTemplate.Core.EntityId.None,
+            Source = FirstPersonAction.Core.EntityId.None,
         };
 }

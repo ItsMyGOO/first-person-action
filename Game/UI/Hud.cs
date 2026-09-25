@@ -1,7 +1,7 @@
+using FirstPersonAction.Combat;
 using Godot;
-using GodotGameTemplate.Combat;
 
-namespace GodotGameTemplate.UI;
+namespace FirstPersonAction.UI;
 
 /// <summary>
 /// HUD（占位样式）：弓箭手显示准星，拉弓蓄力时显示蓄力条。

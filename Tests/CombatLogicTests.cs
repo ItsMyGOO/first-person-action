@@ -1,10 +1,10 @@
 using System.Collections.Generic;
+using FirstPersonAction.Combat;
+using FirstPersonAction.Core;
 using Godot;
-using GodotGameTemplate.Combat;
-using GodotGameTemplate.Core;
 using Xunit;
 
-namespace GodotGameTemplate.Tests;
+namespace FirstPersonAction.Tests;
 
 public class InputCommandBufferTests
 {
@@ -250,6 +250,58 @@ public class MeleeArcQueryTests
             t => t.Pos
         );
         Assert.Empty(hits);
+    }
+
+    [Fact]
+    public void ExcludedSource_NeverHit_EvenAtOrigin()
+    {
+        // 玩家自伤回归：攻击源与原点重合（distance≈0 的巧合守卫曾挡住它），
+        // 显式 exclude 后即使攻击源带水平偏移也不会命中自己
+        var source = new Target { Pos = new Vector3(0.4f, 1, -0.2f) };
+        var enemy = new Target { Pos = new Vector3(0.4f, 1, -1.8f) };
+        var targets = new List<Target> { source, enemy };
+        List<Target> hits = MeleeArcQuery.FindHits(
+            new Vector3(0.4f, 1, -0.2f),
+            new Vector3(0, 0, -1),
+            2.5f,
+            55f,
+            targets,
+            t => t.Pos,
+            exclude: source
+        );
+        Assert.Single(hits);
+        Assert.Same(enemy, hits[0]);
+    }
+
+    [Fact]
+    public void ResultsBuffer_IsReusedAndCleared()
+    {
+        // 复用缓冲（热路径零分配）：上一次的结果不能残留到下一次
+        var buffer = new List<Target>();
+        var far = new List<Target> { new() { Pos = new Vector3(0, 1, -50) } };
+        MeleeArcQuery.FindHits(
+            Vector3.Zero,
+            new Vector3(0, 0, -1),
+            2.5f,
+            55f,
+            far,
+            t => t.Pos,
+            results: buffer
+        );
+        Assert.Empty(buffer);
+
+        var near = new List<Target> { new() { Pos = new Vector3(0, 1, -2) } };
+        List<Target> hits = MeleeArcQuery.FindHits(
+            Vector3.Zero,
+            new Vector3(0, 0, -1),
+            2.5f,
+            55f,
+            near,
+            t => t.Pos,
+            results: buffer
+        );
+        Assert.Same(buffer, hits);
+        Assert.Single(hits);
     }
 }
 

@@ -1,8 +1,8 @@
+using FirstPersonAction.Characters;
+using FirstPersonAction.Core;
 using Godot;
-using GodotGameTemplate.Characters;
-using GodotGameTemplate.Core;
 
-namespace GodotGameTemplate.Combat;
+namespace FirstPersonAction.Combat;
 
 /// <summary>竞技场：按 GameSession 所选角色生成玩家（未选择时回退默认战士）。</summary>
 public partial class Main : Node3D

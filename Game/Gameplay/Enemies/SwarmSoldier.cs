@@ -1,8 +1,8 @@
 using System.Collections.Generic;
+using FirstPersonAction.Core;
 using Godot;
-using GodotGameTemplate.Core;
 
-namespace GodotGameTemplate.Combat;
+namespace FirstPersonAction.Combat;
 
 /// <summary>
 /// 低级兵（M4 §4）：追自己的环绕槽位（不是追玩家身体），进入攻击距离后走攻击周期；

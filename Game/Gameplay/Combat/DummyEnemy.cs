@@ -1,7 +1,8 @@
 using Godot;
-using GodotGameTemplate.Spatial;
+using FirstPersonAction.Core;
+using FirstPersonAction.Spatial;
 
-namespace GodotGameTemplate.Combat;
+namespace FirstPersonAction.Combat;
 
 /// <summary>
 /// 木桩敌人：验证打击感与受击状态的最小敌人（规格 M2）。
@@ -123,7 +124,7 @@ public partial class DummyEnemy : CharacterBody3D, ICombatTarget
     private void OnDied()
     {
         // 占位死亡：关闭碰撞、退出空间系统、下沉后销毁。正式版换 Ragdoll/溶解（规格第 5 节）。
-        SetCollisionLayerValue(3, false);
+        SetCollisionLayerValue(PhysicsLayers.Enemy, false);
         _agent.RemoveFromGroup(SpatialAgent.GroupName);
         Tween tween = CreateTween();
         tween.TweenProperty(_mesh, "position:y", _mesh.Position.Y - 1.5f, 0.7f);

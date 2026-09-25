@@ -1,8 +1,8 @@
 using System.Collections.Generic;
+using FirstPersonAction.Core;
 using Godot;
-using GodotGameTemplate.Core;
 
-namespace GodotGameTemplate.Combat;
+namespace FirstPersonAction.Combat;
 
 /// <summary>
 /// 护卫（M4 §4）：绑定远程单位，左右翼 1.2m 跟随；玩家进入 2.6m 才转入攻击，

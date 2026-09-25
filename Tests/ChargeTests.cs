@@ -1,7 +1,7 @@
-using GodotGameTemplate.Combat;
+using FirstPersonAction.Combat;
 using Xunit;
 
-namespace GodotGameTemplate.Tests;
+namespace FirstPersonAction.Tests;
 
 public class ChargeAccumulatorTests
 {

@@ -1,6 +1,6 @@
 using Godot;
 
-namespace GodotGameTemplate.Combat;
+namespace FirstPersonAction.Combat;
 
 /// <summary>
 /// 标准阵型本地槽位（M5 §1.1，文档 §23 MVP）：前排 3（盾L/骑C/盾R）+ 后排 2（弓/法）。
@@ -23,6 +23,9 @@ public static class FormationLayout
     };
 
     public static Vector3 SlotLocal(int slotIndex) => Locals[slotIndex];
+
+    /// <summary>槽位号是否合法（0 ~ SlotCount-1）。SlotIndex 是场景可编辑值，使用前必须校验。</summary>
+    public static bool IsValidSlot(int slotIndex) => slotIndex >= 0 && slotIndex < SlotCount;
 
     /// <summary>本地槽位 → 世界坐标（yaw 为阵型朝向弧度，与 Godot Y 轴旋转约定一致）。</summary>
     public static Vector3 SlotWorld(Vector3 center, float yawRad, int slotIndex)

@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace GodotGameTemplate.Combat;
+namespace FirstPersonAction.Combat;
 
 /// <summary>
 /// 纯逻辑环绕槽位分配（TDD，M4 §4）：N 个低级兵按玩家周围角度均匀分配环绕槽位。

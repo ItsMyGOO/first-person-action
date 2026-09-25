@@ -1,4 +1,4 @@
-namespace GodotGameTemplate.Combat;
+namespace FirstPersonAction.Combat;
 
 /// <summary>
 /// 单段普攻数据。v1 为纯 C# 类（常量表），M3 技能框架落地时迁移为 Resource。

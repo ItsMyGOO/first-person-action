@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using Godot;
 
-namespace GodotGameTemplate.Combat;
+namespace FirstPersonAction.Combat;
 
 /// <summary>
 /// Ability 对控制器的依赖面。控制器（Player）实现它；纯逻辑测试用假实现。

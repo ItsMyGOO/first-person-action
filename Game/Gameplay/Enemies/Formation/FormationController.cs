@@ -1,6 +1,7 @@
+using System.Collections.Generic;
 using Godot;
 
-namespace GodotGameTemplate.Combat;
+namespace FirstPersonAction.Combat;
 
 /// <summary>
 /// 阵型控制器（M5 §1.2，仿 EnemyGroup 激活模式）：玩家进入半径聚合激活全体成员；
@@ -18,6 +19,7 @@ public partial class FormationController : Node3D
 
     private readonly FormationBrain _brain = new();
     private readonly FormationRoster _roster = new();
+    private readonly List<Node> _rejected = new();
     private bool _activated;
 
     /// <summary>当前阵型朝向（度；冒烟/调试用）。</summary>
@@ -29,7 +31,17 @@ public partial class FormationController : Node3D
         {
             if (child is IFormationMember member)
             {
-                _roster.Assign(member);
+                if (_roster.Assign(member))
+                {
+                    continue;
+                }
+
+                // 槽位号越界或重复：配置错误必须当场报错，且该成员永不激活——
+                // 带病进入 SlotWorld 换算会在物理帧里每帧越界崩溃
+                GD.PushError(
+                    $"[Formation] {child.Name} 的 SlotIndex={member.SlotIndex} 越界或重复（合法 0~{FormationLayout.SlotCount - 1} 且不可撞槽），该成员不参与阵型"
+                );
+                _rejected.Add(child);
             }
         }
 
@@ -95,7 +107,7 @@ public partial class FormationController : Node3D
 
         foreach (Node child in GetChildren())
         {
-            if (child is EnemyAI enemy)
+            if (child is EnemyAI enemy && !_rejected.Contains(child))
             {
                 enemy.Active = active;
             }

@@ -1,4 +1,4 @@
-namespace GodotGameTemplate.Combat;
+namespace FirstPersonAction.Combat;
 
 /// <summary>
 /// 技能工厂：SkillKind → Ability 实例 + 代码权威默认数据。
@@ -33,6 +33,7 @@ public static class AbilityFactory
                 Knockback = 3.5f,
                 AttackRange = 2.6f,
                 HalfAngleDeg = 180f,
+                SuperArmor = true, // 人群填充技：受击不打断（与冲锋/跳劈同一霸体规则）
             },
             SkillKind.Charge => new SkillDefinition
             {

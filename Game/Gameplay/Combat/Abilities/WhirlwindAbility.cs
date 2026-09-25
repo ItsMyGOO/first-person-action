@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using Godot;
 
-namespace GodotGameTemplate.Combat;
+namespace FirstPersonAction.Combat;
 
 /// <summary>
 /// 旋风斩：360° 范围填充技。前摇后进入主动段结算一次（复用锥形查询、半角放宽到 180°），后摇结束。

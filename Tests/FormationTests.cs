@@ -1,9 +1,9 @@
 using System.Linq;
+using FirstPersonAction.Combat;
 using Godot;
-using GodotGameTemplate.Combat;
 using Xunit;
 
-namespace GodotGameTemplate.Tests;
+namespace FirstPersonAction.Tests;
 
 /// <summary>阵型纯逻辑（M5 §1.1）：槽位换算 / 朝向滞回 / 死亡开缺口。</summary>
 public class FormationLayoutTests
@@ -164,5 +164,38 @@ public class FormationRosterTests
         Assert.Null(roster.Living.FirstOrDefault(m => m.SlotIndex == 1));
         Assert.Equal(0, front.SlotIndex);
         Assert.Equal(2, right.SlotIndex);
+    }
+
+    [Fact]
+    public void Assign_OutOfRangeSlot_IsRejected()
+    {
+        // 配置回归：策划在编辑器里把 SlotIndex 配到 5/负数，必须拒绝而不是
+        // 带病进入 SlotWorld 的数组索引（曾会在物理帧里每帧越界崩溃）
+        FormationRoster roster = new();
+        Assert.False(roster.Assign(new FakeMember(5)));
+        Assert.False(roster.Assign(new FakeMember(-1)));
+        Assert.False(roster.Assign(new FakeMember(FormationLayout.SlotCount)));
+        Assert.Empty(roster.Members);
+    }
+
+    [Fact]
+    public void Assign_DuplicateSlot_IsRejected()
+    {
+        FormationRoster roster = new();
+        Assert.True(roster.Assign(new FakeMember(1)));
+        Assert.False(roster.Assign(new FakeMember(1))); // 两个成员配同一槽位：行为未定义，拒绝
+        Assert.Single(roster.Members);
+    }
+
+    [Fact]
+    public void Assign_ValidSlots_AreAccepted()
+    {
+        FormationRoster roster = new();
+        for (int slot = 0; slot < FormationLayout.SlotCount; slot++)
+        {
+            Assert.True(roster.Assign(new FakeMember(slot)));
+        }
+
+        Assert.Equal(FormationLayout.SlotCount, roster.Members.Count);
     }
 }

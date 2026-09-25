@@ -1,7 +1,7 @@
+using FirstPersonAction.Combat;
 using Godot;
-using GodotGameTemplate.Combat;
 
-namespace GodotGameTemplate.Characters;
+namespace FirstPersonAction.Characters;
 
 public enum AttackStyle
 {
