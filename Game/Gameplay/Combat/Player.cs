@@ -36,11 +36,19 @@ public partial class Player : CharacterBody3D, IAbilityContext, ICombatTarget
     private readonly List<Ability> _abilities = new();
     private readonly List<ICombatTarget> _targetBuffer = new(); // 主动帧窗口目标复用（免每帧分配）
     private readonly List<ICombatTarget> _hitBuffer = new();
+    private readonly List<EnemyAI> _executionBuffer = new(); // 处决候选复用
     private Ability? _activeAbility;
     private ForcedMovement? _forced;
     private bool _superArmor;
     private MeleeComboTracker _combo = null!;
     private long _nowMs;
+
+    // —— 处决（规格 §5）——
+    private EnemyAI? _executionTarget;
+    private ExecutionConvergence? _convergence;
+    private float _executionElapsed;
+    private bool _executionStruck;
+    private bool _executionPrompt;
 
     // —— 动作层状态机 ——
     private enum ActionState
@@ -51,6 +59,7 @@ public partial class Player : CharacterBody3D, IAbilityContext, ICombatTarget
         Skill,
         Aim,
         AimCharge,
+        Executing,
     }
 
     private ActionState _action = ActionState.None;
@@ -71,6 +80,7 @@ public partial class Player : CharacterBody3D, IAbilityContext, ICombatTarget
     private bool _prevSkill2;
     private bool _prevSkill3;
     private bool _prevAim;
+    private bool _prevExecute;
 
     public bool IsAttacking => _combo.IsActive;
 
@@ -89,6 +99,13 @@ public partial class Player : CharacterBody3D, IAbilityContext, ICombatTarget
     public event System.Action<SkillKind>? SkillStarted;
     public event System.Action<SkillKind>? SkillEnded;
     public event System.Action? LeapLanded;
+    public event System.Action? ExecutionImpact; // 处决命中瞬间（震屏/特效订阅）
+
+    /// <summary>处决进行中（规格 §5：锁定→收敛→冲击→结算）。</summary>
+    public bool IsExecuting => _action == ActionState.Executing;
+
+    /// <summary>处决按键提示（HUD 轮询）：距离带+锥形内有可处决目标。</summary>
+    public bool ExecutionReady => _executionPrompt;
 
     public bool IsAiming => _action is ActionState.Aim or ActionState.AimCharge;
 
@@ -239,6 +256,9 @@ public partial class Player : CharacterBody3D, IAbilityContext, ICombatTarget
         {
             _health.Died -= OnDied;
         }
+
+        // 处决中途被卸载：解除目标的 Executed 冻结，别把敌人永远留在豁免状态
+        _executionTarget?.ExitExecuted();
     }
 
     public override void _PhysicsProcess(double delta)
@@ -264,9 +284,15 @@ public partial class Player : CharacterBody3D, IAbilityContext, ICombatTarget
     /// <summary>把按住状态的变化转换为命令边沿；攻击/瞄准按键按角色风格分派。</summary>
     private void TickInputEdges()
     {
+        if (_action == ActionState.Executing)
+        {
+            return; // 处决期间压制一切输入（规格 §5 锁定）
+        }
+
         TickAttackAndAimInput();
         PushOnPressEdge(ref _prevJump, "jump", InputCommandKind.Jump);
         PushOnPressEdge(ref _prevDodge, "dodge", InputCommandKind.Dodge);
+        PushOnPressEdge(ref _prevExecute, "execute", InputCommandKind.Execute);
         PushOnPressEdge(ref _prevSkill1, "skill_1", InputCommandKind.Skill1);
         PushOnPressEdge(ref _prevSkill2, "skill_2", InputCommandKind.Skill2);
         PushOnPressEdge(ref _prevSkill3, "skill_3", InputCommandKind.Skill3);
@@ -351,8 +377,32 @@ public partial class Player : CharacterBody3D, IAbilityContext, ICombatTarget
     /// <summary>技能可接受：空闲、连段取消窗口、瞄准/蓄力中（技能打断拉弓——规格确认项）。</summary>
     private bool CanAcceptSkill => CanAcceptDodge;
 
+    /// <summary>处决可接受：空闲或连段取消窗口（倒地敌人就在眼前时连段让位）。</summary>
+    private bool CanAcceptExecute => CanAcceptMelee;
+
     private void TickActions(float dt)
     {
+        if (_action == ActionState.Executing)
+        {
+            TickExecution(dt);
+            return;
+        }
+
+        UpdateExecutionPrompt();
+
+        if (
+            CanAcceptExecute
+            && _executionPrompt
+            && _buffer.TryConsume(InputCommandKind.Execute, _nowMs, out _)
+        )
+        {
+            EnemyAI? target = FindExecutionTarget();
+            if (target != null)
+            {
+                BeginExecution(target);
+            }
+        }
+
         if (CanAcceptDodge && _buffer.TryConsume(InputCommandKind.Dodge, _nowMs, out _))
         {
             StartDodge();
@@ -429,6 +479,130 @@ public partial class Player : CharacterBody3D, IAbilityContext, ICombatTarget
             _activeAbility = ability;
             _action = ActionState.Skill;
             SkillStarted?.Invoke(ability.Def.Kind);
+        }
+    }
+
+    // —— 处决（规格 §5：锁定 → 收敛 → 冲击 → 结算） ——
+
+    /// <summary>HUD 提示刷新：空闲状态下距离带+锥形内存在可处决目标。</summary>
+    private void UpdateExecutionPrompt()
+    {
+        _executionPrompt = _action == ActionState.None && FindExecutionTarget() != null;
+    }
+
+    private EnemyAI? FindExecutionTarget()
+    {
+        _executionBuffer.Clear();
+        foreach (Node node in GetTree().GetNodesInGroup(CombatTuning.TargetGroup))
+        {
+            if (node is EnemyAI { IsExecutionReady: true } enemy)
+            {
+                _executionBuffer.Add(enemy);
+            }
+        }
+
+        return ExecutionQuery.FindTarget(
+            GlobalPosition,
+            ForwardFlat(),
+            _executionBuffer,
+            t => t.Center,
+            _ => true, // 候选已在收集时过滤（IsExecutionReady）
+            CombatTuning.ExecutionMinRange,
+            CombatTuning.ExecutionMaxRange,
+            CombatTuning.ExecutionHalfAngleDeg
+        );
+    }
+
+    /// <summary>第 1 步·锁定：玩家 → Executing，敌人 → Executed，空间豁免，清空输入缓冲。</summary>
+    private void BeginExecution(EnemyAI target)
+    {
+        _buffer.Clear(); // 规格：锁定瞬间清空输入缓冲
+        BreakAim();
+        _combo.Reset();
+        _action = ActionState.Executing;
+        _executionTarget = target;
+        _convergence = new ExecutionConvergence(
+            GlobalPosition,
+            target.GlobalPosition,
+            CombatTuning.ExecutionPlayerShare
+        );
+        _executionElapsed = 0f;
+        _executionStruck = false;
+        Velocity = Vector3.Zero;
+        target.EnterExecuted();
+        _agent.SpatialExempt = true; // 空间系统对这一对豁免（规格 §5 第 1 步）
+    }
+
+    /// <summary>第 2~4 步：收敛（双向缓动无瞬移）→ 冲击（顿帧+震屏+致命一击）→ 结算（回血回空闲）。</summary>
+    private void TickExecution(float dt)
+    {
+        _executionElapsed += dt;
+
+        // 边界：收敛途中目标被外部击杀/移除 → 干净中止、无奖励（规格 §5）。
+        // 冲击后的目标死亡是本流程的结算而非中止——只在冲击前检查。
+        if (
+            !_executionStruck
+            && (
+                _executionTarget == null
+                || !IsInstanceValid(_executionTarget)
+                || _executionTarget.IsDead
+            )
+        )
+        {
+            EndExecution(reward: false);
+            return;
+        }
+
+        if (_executionElapsed < CombatTuning.ExecutionConvergeSeconds)
+        {
+            // 第 2 步·收敛：双方缓动逼近相遇点，玩家面向敌人
+            float t = _executionElapsed / CombatTuning.ExecutionConvergeSeconds;
+            _convergence!.Sample(t, out Vector3 playerPos, out Vector3 enemyPos);
+            GlobalPosition = new Vector3(playerPos.X, GlobalPosition.Y, playerPos.Z);
+            _executionTarget.GlobalPosition = new Vector3(
+                enemyPos.X,
+                _executionTarget.GlobalPosition.Y,
+                enemyPos.Z
+            );
+            Vector3 to = _executionTarget.GlobalPosition - GlobalPosition;
+            to.Y = 0f;
+            if (to.LengthSquared() > 1e-6f)
+            {
+                _yaw = Mathf.Atan2(-to.X, -to.Z);
+            }
+
+            return;
+        }
+
+        if (!_executionStruck)
+        {
+            // 第 3 步·冲击：hit-stop 遮罩 + 震屏 + 致命一击（占位：viewmodel 挥动 + 敌人下沉销毁）
+            _executionStruck = true;
+            HitstopManager.Request(CombatTuning.ExecutionHitstopMs);
+            ExecutionImpact?.Invoke();
+            _executionTarget.ExecuteKill();
+        }
+
+        if (
+            _executionElapsed
+            >= CombatTuning.ExecutionConvergeSeconds + CombatTuning.ExecutionStrikeSeconds
+        )
+        {
+            // 第 4 步·结算：回血奖励（最大生命百分比），回空闲
+            EndExecution(reward: true);
+        }
+    }
+
+    private void EndExecution(bool reward)
+    {
+        _executionTarget?.ExitExecuted(); // ExecuteKill 已自行退出；中止路径在此恢复
+        _executionTarget = null;
+        _convergence = null;
+        _agent.SpatialExempt = false;
+        _action = ActionState.None;
+        if (reward)
+        {
+            _health.Heal(_health.MaxHealth * CombatTuning.ExecutionHealFraction);
         }
     }
 
@@ -562,6 +736,11 @@ public partial class Player : CharacterBody3D, IAbilityContext, ICombatTarget
 
     private void TickMovement(float dt)
     {
+        if (_action == ActionState.Executing)
+        {
+            return; // 收敛由 TickExecution 直写位置，常规移动管线让位（规格 §3 行动层压制移动层）
+        }
+
         Vector2 axis = Input.GetVector("move_left", "move_right", "move_forward", "move_back");
         Vector3 wish = GlobalTransform.Basis * new Vector3(axis.X, 0f, axis.Y);
         if (wish.LengthSquared() > 1f)
@@ -644,7 +823,21 @@ public partial class Player : CharacterBody3D, IAbilityContext, ICombatTarget
     {
         Vector3 rest = CombatTuning.ViewModelRest;
         Vector3 target = rest;
-        if (IsChargeDashing)
+        if (_action == ActionState.Executing)
+        {
+            // 处决占位挥动：收敛期后拉蓄势，冲击帧前捅重击（动画资产到位后由 AnimationTree 接管）
+            target = new Vector3(
+                rest.X,
+                rest.Y,
+                rest.Z
+                    + (
+                        _executionStruck
+                            ? CombatTuning.ViewModelActiveThrustZ
+                            : CombatTuning.ViewModelStartupPullbackZ
+                    )
+            );
+        }
+        else if (IsChargeDashing)
         {
             target = new Vector3(rest.X, rest.Y, rest.Z + CombatTuning.ViewModelChargePullbackZ);
         }

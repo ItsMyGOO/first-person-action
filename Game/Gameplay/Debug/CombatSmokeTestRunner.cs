@@ -107,6 +107,7 @@ public partial class CombatSmokeTestRunner : Node
             ("闪避无敌帧", DodgeInvulnPhase),
             ("霸体打断", SuperArmorPhase),
             ("玩家死亡", PlayerDeathPhase),
+            ("处决全流程", ExecutionPhase),
         };
 
     // —— 阶段 ——
@@ -541,6 +542,71 @@ public partial class CombatSmokeTestRunner : Node
 
         await EndPhase(main); // 重载计时（90 帧）未到即卸载——守卫应跳过重载
         await Frames(10);
+    }
+
+    /// <summary>处决全流程（M4 顺延项补齐，规格 §5）：击倒→HUD提示→背向/超距否定→
+    /// 无瞬移收敛（双向缓动）→顿帧击杀→回血奖励→回空闲。</summary>
+    private async Task ExecutionPhase()
+    {
+        (Node main, Player player) = await StartPhase("res://Game/Config/Characters/Warrior.tres");
+        DummyEnemy dummy = main.GetNode<DummyEnemy>("Dummy1");
+        HealthComponent dhp = main.GetNode<HealthComponent>("Dummy1/HealthComponent");
+        HealthComponent php = main.GetNode<HealthComponent>("Player/HealthComponent");
+        Label prompt = main.GetNode<Label>("Hud/ExecutionPrompt");
+
+        // 击倒木桩（韧性 60，一击 999 韧性伤 → Downed = 可处决窗口）
+        dummy.ApplyHit(new HitData { Damage = 5f, PoiseDamage = 999f });
+        await Frames(5);
+        Check(dummy.IsDowned, "木桩被击倒（进入可处决状态）");
+
+        // 站到 1.2m 正前方（距离带 0.8~1.8m + 45° 锥形内）
+        player.GlobalPosition = dummy.GlobalPosition + new Vector3(0, 0.2f, 1.2f);
+        player.Rotation = Vector3.Zero;
+        await Frames(5);
+        Check(player.ExecutionReady, "距离带+锥形内处决就绪");
+        Check(prompt.Visible, "HUD 处决按键提示显示");
+
+        // 背对目标（偏差 180° > 45°）→ 不提示（DebugYaw：直接设 Rotation 会被 _Process 的 yaw 覆盖）
+        player.DebugYaw = Mathf.Pi;
+        await Frames(2);
+        Check(!player.ExecutionReady, "背对目标不提示（45° 锥形约束）");
+        player.DebugYaw = 0f;
+
+        // 超距 3m（带外上界 1.8m）→ 不提示
+        player.GlobalPosition = dummy.GlobalPosition + new Vector3(0, 0.2f, 3f);
+        player.Rotation = Vector3.Zero;
+        await Frames(2);
+        Check(!player.ExecutionReady, "超距 3m 不提示（0.8~1.8m 距离带约束）");
+
+        // 回到带内执行处决：收敛期逐帧采样，验证无瞬移
+        player.GlobalPosition = dummy.GlobalPosition + new Vector3(0, 0.2f, 1.2f);
+        await Frames(3);
+        php.ApplyDamage(30f); // 120 -> 90，验证结算回血 18（15% 最大生命）
+        PressRelease("execute");
+        await Frames(2);
+        Check(player.IsExecuting, "按键进入处决（锁定）");
+
+        Vector3 prev = player.GlobalPosition;
+        float maxStep = 0f;
+        for (int i = 0; i < 10; i++) // 收敛 0.20s ≈ 12 帧
+        {
+            await Frames(1);
+            maxStep = Mathf.Max(maxStep, (player.GlobalPosition - prev).Length());
+            prev = player.GlobalPosition;
+        }
+
+        Check(maxStep < 0.15f, $"收敛无瞬移（最大单帧位移 {maxStep:F3}m，双向缓动）");
+
+        await Frames(30); // 冲击（第 ~14 帧）+ 恢复 0.38s，留余量
+        Check(dummy.IsDead || !IsInstanceValid(dummy), "冲击命中：处决目标死亡");
+        Check(!player.IsExecuting, "处决结束回空闲");
+        Check(
+            Mathf.Abs(php.CurrentHealth - 108f) < 0.1f,
+            $"处决回血奖励：HP {php.CurrentHealth}（90 + 120×15%）"
+        );
+        Check(dhp.CurrentHealth == 0f, "目标血量归零");
+
+        await EndPhase(main);
     }
 
     private int CountShockwaves() =>

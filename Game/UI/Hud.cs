@@ -1,10 +1,11 @@
 using FirstPersonAction.Combat;
+using FirstPersonAction.Core;
 using Godot;
 
 namespace FirstPersonAction.UI;
 
 /// <summary>
-/// HUD（占位样式）：弓箭手显示准星，拉弓蓄力时显示蓄力条。
+/// HUD（占位样式）：弓箭手显示准星，拉弓蓄力时显示蓄力条；处决就绪时提示按键（规格 §5）。
 /// 只读玩家状态刷新（规格第 1 节表现层），不回写模拟。
 /// </summary>
 public partial class Hud : CanvasLayer
@@ -12,6 +13,7 @@ public partial class Hud : CanvasLayer
     private ProgressBar _chargeBar = null!;
     private ProgressBar _playerBar = null!;
     private ColorRect _crosshair = null!;
+    private Label _executionPrompt = null!;
     private Combat.Player? _player;
 
     public override void _Ready()
@@ -19,6 +21,7 @@ public partial class Hud : CanvasLayer
         _chargeBar = GetNode<ProgressBar>("ChargeBar");
         _crosshair = GetNode<ColorRect>("Crosshair");
         _playerBar = GetNode<ProgressBar>("PlayerBar");
+        _executionPrompt = GetNode<Label>("ExecutionPrompt");
     }
 
     public override void _Process(double delta)
@@ -29,6 +32,7 @@ public partial class Hud : CanvasLayer
             _crosshair.Visible = false;
             _chargeBar.Visible = false;
             _playerBar.Visible = false;
+            _executionPrompt.Visible = false;
             return;
         }
 
@@ -37,5 +41,16 @@ public partial class Hud : CanvasLayer
         _chargeBar.Value = _player.ChargeProgress01 * 100.0;
         _playerBar.Visible = true; // 常驻玩家血条（M4 §2）
         _playerBar.Value = _player.Health01 * 100.0;
+
+        // 处决提示：跟随当前实际绑定键（改键后提示同步）
+        if (_executionPrompt.Visible != _player.ExecutionReady)
+        {
+            _executionPrompt.Visible = _player.ExecutionReady;
+            if (_executionPrompt.Visible)
+            {
+                Key? key = KeybindManager.Instance?.CurrentKey("execute");
+                _executionPrompt.Text = key.HasValue ? $"{key} 处决" : "处决";
+            }
+        }
     }
 }

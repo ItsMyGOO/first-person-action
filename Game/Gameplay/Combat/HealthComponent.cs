@@ -41,4 +41,15 @@ public partial class HealthComponent : Node
             EmitSignal(SignalName.Died);
         }
     }
+
+    /// <summary>治疗（处决奖励等）：钳制到上限，不溢出、不对死亡生效。</summary>
+    public void Heal(float amount)
+    {
+        if (IsDead || amount <= 0f)
+        {
+            return;
+        }
+
+        CurrentHealth = Mathf.Min(MaxHealth, CurrentHealth + amount);
+    }
 }

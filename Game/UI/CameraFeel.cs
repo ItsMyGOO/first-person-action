@@ -95,6 +95,12 @@ public partial class CameraFeel : Node
         SpawnShockwave();
     }
 
+    /// <summary>处决冲击（规格 §5 第 3 步）：顿帧已由 Player 请求，这里补震屏爆发。</summary>
+    private void OnExecutionImpact()
+    {
+        _shake = CombatTuning.ExecutionShakeAmplitude;
+    }
+
     /// <summary>绑定/重绑玩家事件。订阅纪律：换绑与退出时统一退订——一旦本节点
     /// 与玩家不在同一子树（跨场景相机等），不退订就会在场景重载时泄漏委托。</summary>
     private void BindPlayer()
@@ -108,6 +114,7 @@ public partial class CameraFeel : Node
         _player = player;
         _player.SkillStarted += OnSkillStarted;
         _player.LeapLanded += OnLeapLanded;
+        _player.ExecutionImpact += OnExecutionImpact;
     }
 
     private void UnbindPlayer()
@@ -116,6 +123,7 @@ public partial class CameraFeel : Node
         {
             _player.SkillStarted -= OnSkillStarted;
             _player.LeapLanded -= OnLeapLanded;
+            _player.ExecutionImpact -= OnExecutionImpact;
         }
 
         _player = null;

@@ -158,4 +158,15 @@ public static class CombatTuning
     public const float FormationMeleeAttackDamage = 10f;
     public const float FormationMeleeAttackPoiseDamage = 18f;
     public const float FormationMeleeAttackKnockback = 2.5f;
+
+    // —— 处决（M4 顺延项，规格 §5：Doom 式按键处决，短演出，不允许明显吸附）——
+    public const float ExecutionMinRange = 0.8f; // 距离带下界（贴脸不可处决）
+    public const float ExecutionMaxRange = 1.8f; // 距离带上界
+    public const float ExecutionHalfAngleDeg = 45f; // 前方锥形半角
+    public const float ExecutionConvergeSeconds = 0.20f; // 收敛时长（规格：150~250ms）
+    public const float ExecutionStrikeSeconds = 0.18f; // 冲击+恢复时长
+    public const int ExecutionHitstopMs = 150; // 冲击顿帧（处决修正的遮罩）
+    public const float ExecutionHealFraction = 0.15f; // 结算回血 = 最大生命 × 此比例
+    public const float ExecutionPlayerShare = 0.35f; // 收敛分摊：玩家上步 35%、敌人靠拢 65%
+    public const float ExecutionShakeAmplitude = 0.5f; // 冲击震屏幅度（CameraFeel）
 }

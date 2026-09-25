@@ -10,7 +10,7 @@ namespace FirstPersonAction.Combat;
 /// 未激活时不索敌不移动——由 EnemyGroup 聚合激活（ InitiallyActive=true 的编组直接激活）。
 /// 单位间阻挡与被推挤由逻辑空间系统处理（SpatialAgent 参数按实例导出覆盖）。
 /// </summary>
-public abstract partial class EnemyAI : CharacterBody3D, ICombatTarget
+public abstract partial class EnemyAI : CharacterBody3D, ICombatTarget, IExecutionTarget
 {
     protected static readonly Color FlashColor = new(1f, 0.25f, 0.2f); // 受击闪红
 
@@ -44,9 +44,18 @@ public abstract partial class EnemyAI : CharacterBody3D, ICombatTarget
     /// <summary>激活后才行动（EnemyGroup 聚合激活）。</summary>
     public bool Active { get; set; }
 
+    /// <summary>处决锁定中（规格 §5 第 1 步）：AI/受击/空间全部冻结，位置由处决方驱动。</summary>
+    public bool Executed { get; private set; }
+
     public Vector3 Center => GlobalPosition + Vector3.Up * 0.9f;
 
-    public bool CanBeHit => !Health.IsDead;
+    /// <summary>处决锁定期间免疫外部伤害（规格 §5）；致命一击走 ExecuteKill 专线。</summary>
+    public bool CanBeHit => !Health.IsDead && !Executed;
+
+    public bool IsDead => Health.IsDead;
+
+    /// <summary>可处决（规格 §5）：倒地/失衡且未被锁定、未死亡。</summary>
+    public bool IsExecutionReady => Reaction.IsDowned && !Executed && !Health.IsDead;
 
     /// <summary>期望的水平移动速度，由子类行为每帧写入；强制位移期间被覆盖。</summary>
     protected Vector3 DesiredHorizontal { get; set; } = Vector3.Zero;
@@ -98,6 +107,14 @@ public abstract partial class EnemyAI : CharacterBody3D, ICombatTarget
     public override void _PhysicsProcess(double delta)
     {
         float dt = (float)delta;
+        if (Executed)
+        {
+            // 处决锁定：行为停摆，水平位置由处决方的收敛采样直写，这里只剩重力贴地
+            DesiredHorizontal = Vector3.Zero;
+            TickShared(dt);
+            return;
+        }
+
         if (Active)
         {
             TickActive(dt);
@@ -108,6 +125,34 @@ public abstract partial class EnemyAI : CharacterBody3D, ICombatTarget
         }
 
         TickShared(dt);
+    }
+
+    /// <summary>进入处决锁定（规格 §5 第 1 步）：冻结行为、清残留滑行、空间豁免。</summary>
+    public void EnterExecuted()
+    {
+        Executed = true;
+        DesiredHorizontal = Vector3.Zero;
+        _forcedTimer = 0f; // 清残留击退/推挤滑行，避免与收敛采样打架
+        Agent.SpatialExempt = true;
+    }
+
+    /// <summary>解除处决锁定（中止路径/玩家卸载时恢复常态）。</summary>
+    public void ExitExecuted()
+    {
+        if (!Executed)
+        {
+            return;
+        }
+
+        Executed = false;
+        Agent.SpatialExempt = false;
+    }
+
+    /// <summary>处决致命一击（规格 §5 第 3 步）：绕过 CanBeHit 免疫——免疫挡的是外部伤害。</summary>
+    public void ExecuteKill()
+    {
+        ExitExecuted();
+        Health.ApplyDamage(float.MaxValue); // → Died → OnDied 下沉销毁
     }
 
     /// <summary>受击闪红进行中（子类预告表现让位于闪红）。</summary>

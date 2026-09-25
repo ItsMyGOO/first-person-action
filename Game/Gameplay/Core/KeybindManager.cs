@@ -23,6 +23,7 @@ public partial class KeybindManager : Node
         "attack",
         "dodge",
         "aim",
+        "execute",
         "skill_1",
         "skill_2",
         "skill_3",
@@ -53,6 +54,25 @@ public partial class KeybindManager : Node
         }
 
         Load();
+    }
+
+    /// <summary>动作当前绑定的物理键（无键盘绑定时返回 null；HUD 提示等只读场景用）。</summary>
+    public Key? CurrentKey(string action)
+    {
+        if (!InputMap.HasAction(action))
+        {
+            return null;
+        }
+
+        foreach (InputEvent @event in InputMap.ActionGetEvents(action))
+        {
+            if (@event is InputEventKey key)
+            {
+                return key.PhysicalKeycode;
+            }
+        }
+
+        return null;
     }
 
     /// <summary>把 action 重绑到指定物理键：清除该动作的键盘事件后写入新键（保留鼠标/手柄）。</summary>
