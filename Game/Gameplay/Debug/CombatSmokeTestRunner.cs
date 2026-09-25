@@ -95,6 +95,7 @@ public partial class CombatSmokeTestRunner : Node
             ("弓手连段", ArcherPhase),
             ("箭矢方向回归", ArrowDirectionPhase),
             ("改键", KeybindPhase),
+            ("键位设置UI", KeybindUiPhase),
             ("远程敌人", RangedEnemyPhase),
             ("编组激活", EnemyGroupPhase),
             ("手感事件", FeelPhase),
@@ -326,6 +327,35 @@ public partial class CombatSmokeTestRunner : Node
         );
 
         await EndPhase(main);
+    }
+
+    /// <summary>键位设置 UI（M6 收尾）：面板打开 → 重绑捕获 → 持久化 → 恢复默认。
+    /// 直调 PauseMenu 的公开缝（autoload 常驻），键事件走真实 Input.ParseInputEvent。</summary>
+    private async Task KeybindUiPhase()
+    {
+        var keybinds = Core.KeybindManager.Instance!;
+        keybinds.ResetToDefaults(); // 从确定的默认状态开始
+        var pauseMenu = GetNode<UI.PauseMenu>("/root/PauseMenu");
+
+        pauseMenu.OpenKeybindSettings();
+        await Frames(2);
+        Check(pauseMenu.IsKeybindVisible, "键位设置面板打开");
+        Check(keybinds.CurrentKey("dodge") == Key.Shift, "默认键位显示（dodge = Shift）");
+
+        pauseMenu.BeginRebind("dodge"); // 等同点击行按钮
+        Input.ParseInputEvent(new InputEventKey { PhysicalKeycode = Key.G, Pressed = true });
+        await Frames(2);
+        Check(keybinds.CurrentKey("dodge") == Key.G, "UI 重绑捕获生效（dodge → G）");
+        Check(FileAccess.FileExists("user://keybinds.cfg"), "重绑经面板 Save 持久化");
+
+        pauseMenu.ResetKeybinds();
+        await Frames(2);
+        Check(keybinds.CurrentKey("dodge") == Key.Shift, "恢复默认（dodge 回 Shift，持久化清除）");
+        Check(!FileAccess.FileExists("user://keybinds.cfg"), "恢复默认后 keybinds.cfg 已删除");
+
+        pauseMenu.CloseKeybindSettings();
+        await Frames(1);
+        Check(!pauseMenu.IsKeybindVisible, "面板关闭");
     }
 
     /// <summary>远程敌人（M4）：9m 距离带内驻停瞄准（0.7s 红线预告）→ 射箭，

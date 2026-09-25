@@ -31,6 +31,9 @@ public partial class KeybindManager : Node
 
     public static KeybindManager? Instance { get; private set; }
 
+    /// <summary>受管动作列表（键位设置 UI 遍历用）。</summary>
+    public static IReadOnlyList<string> Actions => ManagedActions;
+
     private readonly Dictionary<string, Key> _defaults = new();
 
     public override void _Ready()
