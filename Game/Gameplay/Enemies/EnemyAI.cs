@@ -126,6 +126,8 @@ public abstract partial class EnemyAI : CharacterBody3D, ICombatTarget
             _flashElapsed -= dt;
         }
 
+        TickPresentation(dt);
+
         Vector3 horizontal = _forcedTimer > 0f ? _forcedVelocity : DesiredHorizontal;
         if (_forcedTimer > 0f)
         {
@@ -145,6 +147,9 @@ public abstract partial class EnemyAI : CharacterBody3D, ICombatTarget
         Velocity = velocity;
         MoveAndSlide();
     }
+
+    /// <summary>子类表现钩子（每物理帧，材质色之后）：木桩倒地躺平等。</summary>
+    protected virtual void TickPresentation(float dt) { }
 
     /// <summary>激活期间的行为，由子类实现（移动/攻击循环；每帧在 TickShared 之前调用）。</summary>
     protected abstract void TickActive(float dt);

@@ -5,6 +5,7 @@ namespace FirstPersonAction.Core;
 /// <summary>
 /// 稳定的逻辑实体标识。模拟层一切跨实体引用都通过它而非节点引用，
 /// 为联机同步（实体按 ID 寻址）预留——规格第 6 节第 1 条。
+/// 当前生产代码仅以 None 占位（HitData.Source 联机时填 NetworkId）。
 /// </summary>
 public readonly struct EntityId : IEquatable<EntityId>
 {

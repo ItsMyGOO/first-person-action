@@ -6,6 +6,7 @@ namespace FirstPersonAction.Core;
 /// 带种子的独立随机源。约定：任何影响模拟结果的随机数（伤害浮动、AI 决策）
 /// 必须来自实例而非全局 RNG，保证联机/回放可复现——规格第 6 节第 4 条。
 /// </summary>
+[Obsolete("联机预留：当前无生产调用方（仅单测覆盖），接线联机回放时移除本标记")]
 public sealed class SeededRandom
 {
     private Random _random;

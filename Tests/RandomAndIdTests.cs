@@ -1,3 +1,6 @@
+// SeededRandom 标记为联机预留（无生产调用方），单测保持覆盖直到接线
+#pragma warning disable CS0612, CS0618
+
 using FirstPersonAction.Core;
 using Xunit;
 

@@ -42,6 +42,10 @@ public partial class CharacterDefinition : Resource
     [Export]
     public float QuickShotCooldown = 0.35f;
 
+    /// <summary>快速箭箭速（蓄力箭速走 ArrowSpeedLevels）。</summary>
+    [Export]
+    public float QuickShotSpeed = 26f;
+
     [Export]
     public float ChargeFullSeconds = 1.1f;
 

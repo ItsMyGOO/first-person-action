@@ -200,6 +200,10 @@ public partial class Player : CharacterBody3D, IAbilityContext, ICombatTarget
         {
             _pitch = Mathf.MoveToward(_pitch, -0.45f, 1.2f * dt); // 死亡相机低垂
         }
+        else
+        {
+            TickGamepadLook(dt); // 手柄右摇杆视角（鼠标走 _UnhandledInput 事件路径）
+        }
 
         Rotation = new Vector3(0f, _yaw, 0f);
         _head.Rotation = new Vector3(_pitch, 0f, 0f);
@@ -207,6 +211,34 @@ public partial class Player : CharacterBody3D, IAbilityContext, ICombatTarget
         // 瞄准表现状态仍在此更新；FOV/肩视偏移/震动已移交 CameraFeel（M4 §5）
         float aimTarget = IsAiming ? 1f : 0f;
         _aimBlend = Mathf.MoveToward(_aimBlend, aimTarget, CombatTuning.AimBlendSpeed * dt);
+    }
+
+    /// <summary>右摇杆视角：满偏转角速度（弧度/秒）。符号约定与鼠标一致（右=右转，下=低头）。</summary>
+    private void TickGamepadLook(float dt)
+    {
+        Vector2 stick = Input.GetVector("look_left", "look_right", "look_up", "look_down");
+        if (stick == Vector2.Zero)
+        {
+            return;
+        }
+
+        float delta = CombatTuning.GamepadLookSpeedRad * dt;
+        _yaw -= stick.X * delta;
+        _pitch = Mathf.Clamp(
+            _pitch - stick.Y * delta,
+            -Mathf.DegToRad(CombatTuning.PitchClampDeg),
+            Mathf.DegToRad(CombatTuning.PitchClampDeg)
+        );
+    }
+
+    public override void _ExitTree()
+    {
+        // 订阅纪律：与 HealthComponent 同树销毁时本可省略，但节点一旦移出
+        // 子树（跨场景 HUD 等）就会泄漏——从现在起统一退订
+        if (_health != null)
+        {
+            _health.Died -= OnDied;
+        }
     }
 
     public override void _PhysicsProcess(double delta)
@@ -505,9 +537,9 @@ public partial class Player : CharacterBody3D, IAbilityContext, ICombatTarget
     private void FireArrow(int level, bool quickShot = false)
     {
         Vector3 direction = -_camera.GlobalTransform.Basis.Z;
-        Vector3 origin = _camera.GlobalPosition + direction * 0.4f;
+        Vector3 origin = _camera.GlobalPosition + direction * CombatTuning.ArrowMuzzleOffset;
         float damage = quickShot ? _def.QuickShotDamage : LevelValue(_def.ArrowDamageLevels, level);
-        float speed = quickShot ? 26f : LevelValue(_def.ArrowSpeedLevels, level);
+        float speed = quickShot ? _def.QuickShotSpeed : LevelValue(_def.ArrowSpeedLevels, level);
 
         Projectile.Spawn(
             this,
@@ -517,8 +549,8 @@ public partial class Player : CharacterBody3D, IAbilityContext, ICombatTarget
             new HitData
             {
                 Damage = damage,
-                PoiseDamage = damage * 2f,
-                Knockback = direction * 1.5f,
+                PoiseDamage = damage * CombatTuning.ArrowPoiseDamageScale,
+                Knockback = direction * CombatTuning.ArrowKnockback,
                 Source = EntityId.None, // 联机时填玩家 NetworkId
             },
             gravity: !quickShot && level < 2 ? CombatTuning.ArrowGravity : 0f
@@ -610,22 +642,22 @@ public partial class Player : CharacterBody3D, IAbilityContext, ICombatTarget
     /// <summary>viewmodel 占位动画：前摇后拉、主动段前捅、后摇回位；冲锋期间后拉姿态（M4 §5）。动画资产到位后由 AnimationTree 接管。</summary>
     private void TickViewModel(float dt)
     {
-        Vector3 rest = new Vector3(0.28f, -0.26f, -0.55f);
+        Vector3 rest = CombatTuning.ViewModelRest;
         Vector3 target = rest;
         if (IsChargeDashing)
         {
-            target = new Vector3(rest.X, rest.Y, rest.Z + 0.15f); // 冲锋 viewmodel 后拉
+            target = new Vector3(rest.X, rest.Y, rest.Z + CombatTuning.ViewModelChargePullbackZ);
         }
         else if (_combo.Phase == ComboStagePhase.Startup)
         {
-            target = new Vector3(rest.X, rest.Y, rest.Z + 0.12f);
+            target = new Vector3(rest.X, rest.Y, rest.Z + CombatTuning.ViewModelStartupPullbackZ);
         }
         else if (_combo.Phase == ComboStagePhase.Active)
         {
-            target = new Vector3(rest.X, rest.Y, rest.Z - 0.18f);
+            target = new Vector3(rest.X, rest.Y, rest.Z + CombatTuning.ViewModelActiveThrustZ);
         }
 
-        _viewArm.Position = _viewArm.Position.Lerp(target, 18f * dt);
+        _viewArm.Position = _viewArm.Position.Lerp(target, CombatTuning.ViewModelLerpSpeed * dt);
     }
 
     private Vector3 ForwardFlat()

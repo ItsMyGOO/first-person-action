@@ -33,16 +33,13 @@ public partial class CameraFeel : Node
     public override void _Process(double delta)
     {
         float dt = (float)delta;
-        if (_player == null)
+        if (_player == null || !IsInstanceValid(_player))
         {
-            _player = GetTree().GetFirstNodeInGroup(CombatTuning.PlayerGroup) as Player;
+            BindPlayer();
             if (_player == null)
             {
                 return;
             }
-
-            _player.SkillStarted += OnSkillStarted;
-            _player.LeapLanded += OnLeapLanded;
         }
 
         bool dashing = _player.IsChargeDashing;
@@ -97,6 +94,34 @@ public partial class CameraFeel : Node
         _landSink = 1f;
         SpawnShockwave();
     }
+
+    /// <summary>绑定/重绑玩家事件。订阅纪律：换绑与退出时统一退订——一旦本节点
+    /// 与玩家不在同一子树（跨场景相机等），不退订就会在场景重载时泄漏委托。</summary>
+    private void BindPlayer()
+    {
+        UnbindPlayer();
+        if (GetTree().GetFirstNodeInGroup(CombatTuning.PlayerGroup) is not Player player)
+        {
+            return;
+        }
+
+        _player = player;
+        _player.SkillStarted += OnSkillStarted;
+        _player.LeapLanded += OnLeapLanded;
+    }
+
+    private void UnbindPlayer()
+    {
+        if (_player != null && IsInstanceValid(_player))
+        {
+            _player.SkillStarted -= OnSkillStarted;
+            _player.LeapLanded -= OnLeapLanded;
+        }
+
+        _player = null;
+    }
+
+    public override void _ExitTree() => UnbindPlayer();
 
     /// <summary>ShockwaveRing（代码生成，无美术资产）：TorusMesh 0.3→3.2m 扩散淡出，0.4s 后自毁。</summary>
     private void SpawnShockwave()

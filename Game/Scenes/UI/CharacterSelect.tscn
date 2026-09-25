@@ -30,13 +30,3 @@ theme_override_constants/separation = 16
 layout_mode = 2
 text = "选择角色"
 horizontal_alignment = 1
-
-[node name="WarriorButton" type="Button" parent="Panel/VBox"]
-custom_minimum_size = Vector2(220, 48)
-layout_mode = 2
-text = "战士"
-
-[node name="ArcherButton" type="Button" parent="Panel/VBox"]
-custom_minimum_size = Vector2(220, 48)
-layout_mode = 2
-text = "弓箭手"
