@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="EnemyDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Game/Gameplay/Characters/EnemyDefinition.cs" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+DisplayName = "骑士"
+MaxPoise = 120.0
+BodyMass = 500.0
+BodyPushResistance = 500.0
+MoveSpeed = 3.0
+AttackDamage = 10.0
+AttackPoiseDamage = 18.0
+AttackKnockback = 2.5
+AttackRange = 2.2
+AttackHalfAngleDeg = 60.0
+AttackWindup = 0.45
+AttackCooldown = 1.6

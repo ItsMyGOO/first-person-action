@@ -14,10 +14,7 @@ public partial class FormationMelee : EnemyAI, IFormationMember
 {
     private static readonly Color WindupColor = new(1f, 0.55f, 0.2f); // 前摇预告（橙）
 
-    private readonly AttackCycle _attack = new(
-        CombatTuning.FormationMeleeAttackWindup,
-        CombatTuning.FormationMeleeAttackCooldown
-    );
+    private AttackCycle _attack = null!; // OnEnemyReady 时按数值定义构建
 
     [Export]
     public int SlotIndex { get; set; }
@@ -30,6 +27,8 @@ public partial class FormationMelee : EnemyAI, IFormationMember
 
     protected override void OnEnemyReady()
     {
+        _attack = new AttackCycle(Def.AttackWindup, Def.AttackCooldown);
+
         // 未被控制器接管前，槽位即出生点（T2 站桩可验）
         SlotPosition = GlobalPosition;
         SlotFacing = Rotation.Y;
@@ -53,17 +52,14 @@ public partial class FormationMelee : EnemyAI, IFormationMember
         float playerDist = FlatDistance(GlobalPosition, player.GlobalPosition);
 
         // 冷却中玩家拉开 → 脱离攻击循环回槽驻守
-        if (
-            _attack.Phase == AttackCyclePhase.Cooldown
-            && playerDist > CombatTuning.FormationMeleeAttackRange
-        )
+        if (_attack.Phase == AttackCyclePhase.Cooldown && playerDist > Def.AttackRange)
         {
             _attack.Stop();
         }
 
         if (_attack.Phase == AttackCyclePhase.Idle)
         {
-            if (playerDist <= CombatTuning.FormationMeleeAttackRange)
+            if (playerDist <= Def.AttackRange)
             {
                 _attack.Start(); // 原地进入前摇（不离槽追击）
             }
@@ -95,7 +91,7 @@ public partial class FormationMelee : EnemyAI, IFormationMember
         if (slotDist > CombatTuning.FormationSlotSnapDist)
         {
             Vector3 dir = toSlot / Mathf.Max(slotDist, 0.0001f);
-            DesiredHorizontal = dir * CombatTuning.FormationMoveSpeed;
+            DesiredHorizontal = dir * Def.MoveSpeed;
             FaceTowards(SlotPosition);
             return;
         }
@@ -116,8 +112,8 @@ public partial class FormationMelee : EnemyAI, IFormationMember
         List<ICombatTarget> hits = MeleeArcQuery.FindHits(
             GlobalPosition,
             ForwardFlat(),
-            CombatTuning.FormationMeleeAttackRange,
-            CombatTuning.FormationMeleeAttackHalfAngleDeg,
+            Def.AttackRange,
+            Def.AttackHalfAngleDeg,
             new List<ICombatTarget> { player },
             t => t.Center
         );
@@ -127,11 +123,10 @@ public partial class FormationMelee : EnemyAI, IFormationMember
             target.ApplyHit(
                 new HitData
                 {
-                    Damage = CombatTuning.FormationMeleeAttackDamage,
-                    PoiseDamage = CombatTuning.FormationMeleeAttackPoiseDamage,
+                    Damage = Def.AttackDamage,
+                    PoiseDamage = Def.AttackPoiseDamage,
                     Knockback =
-                        (player.GlobalPosition - GlobalPosition).Normalized()
-                            * CombatTuning.FormationMeleeAttackKnockback
+                        (player.GlobalPosition - GlobalPosition).Normalized() * Def.AttackKnockback
                         + Vector3.Up * 0.5f,
                     Source = EntityId.None,
                 }

@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="EnemyDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Game/Gameplay/Characters/EnemyDefinition.cs" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+DisplayName = "护卫"
+MaxPoise = 80.0
+BodyPushResistance = 9999.0
+MoveSpeed = 3.6
+AttackDamage = 12.0
+AttackPoiseDamage = 15.0
+AttackKnockback = 3.0
+AttackRange = 2.0
+AttackHalfAngleDeg = 60.0
+AttackWindup = 0.45
+AttackCooldown = 1.5
+WingOffset = 1.2
+EngageRange = 2.6
+LeashRange = 3.5

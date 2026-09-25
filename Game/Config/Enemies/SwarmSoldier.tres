@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="EnemyDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Game/Gameplay/Characters/EnemyDefinition.cs" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+DisplayName = "低级兵"
+MaxPoise = 40.0
+MoveSpeed = 3.2
+AttackDamage = 8.0
+AttackPoiseDamage = 10.0
+AttackKnockback = 2.5
+AttackRange = 1.7
+AttackHalfAngleDeg = 60.0
+AttackWindup = 0.5
+AttackCooldown = 1.2

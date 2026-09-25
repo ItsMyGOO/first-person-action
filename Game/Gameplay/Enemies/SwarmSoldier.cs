@@ -12,13 +12,15 @@ public partial class SwarmSoldier : EnemyAI
 {
     private static readonly Color WindupColor = new(1f, 0.55f, 0.2f); // 前摇预告（橙）
 
-    private readonly AttackCycle _attack = new(
-        CombatTuning.SwarmAttackWindup,
-        CombatTuning.SwarmAttackCooldown
-    );
+    private AttackCycle _attack = null!; // OnEnemyReady 时按数值定义构建
 
     /// <summary>本兵的环绕槽位角度（EnemyGroup 分配，世界系弧度）。</summary>
     public float SlotAngle { get; set; }
+
+    protected override void OnEnemyReady()
+    {
+        _attack = new AttackCycle(Def.AttackWindup, Def.AttackCooldown);
+    }
 
     /// <summary>前摇预告色（闪红优先）。</summary>
     protected override Color DisplayColor =>
@@ -43,17 +45,17 @@ public partial class SwarmSoldier : EnemyAI
         float slotDist = toSlot.Length();
 
         // 冷却中玩家拉开距离 → 脱离攻击循环重新追槽位
-        if (_attack.Phase == AttackCyclePhase.Cooldown && slotDist > CombatTuning.SwarmAttackRange)
+        if (_attack.Phase == AttackCyclePhase.Cooldown && slotDist > Def.AttackRange)
         {
             _attack.Stop();
         }
 
         if (_attack.Phase == AttackCyclePhase.Idle)
         {
-            if (slotDist > CombatTuning.SwarmAttackRange)
+            if (slotDist > Def.AttackRange)
             {
                 Vector3 dir = toSlot / Mathf.Max(slotDist, 0.0001f);
-                DesiredHorizontal = dir * CombatTuning.SwarmMoveSpeed;
+                DesiredHorizontal = dir * Def.MoveSpeed;
                 FaceTowards(GlobalPosition + dir);
                 return;
             }
@@ -78,8 +80,8 @@ public partial class SwarmSoldier : EnemyAI
         List<ICombatTarget> hits = MeleeArcQuery.FindHits(
             GlobalPosition,
             ForwardFlat(),
-            CombatTuning.SwarmAttackRange,
-            CombatTuning.SwarmAttackHalfAngleDeg,
+            Def.AttackRange,
+            Def.AttackHalfAngleDeg,
             new List<ICombatTarget> { player },
             t => t.Center
         );
@@ -89,11 +91,10 @@ public partial class SwarmSoldier : EnemyAI
             target.ApplyHit(
                 new HitData
                 {
-                    Damage = CombatTuning.SwarmAttackDamage,
-                    PoiseDamage = CombatTuning.SwarmAttackPoiseDamage,
+                    Damage = Def.AttackDamage,
+                    PoiseDamage = Def.AttackPoiseDamage,
                     Knockback =
-                        (player.GlobalPosition - GlobalPosition).Normalized()
-                            * CombatTuning.SwarmAttackKnockback
+                        (player.GlobalPosition - GlobalPosition).Normalized() * Def.AttackKnockback
                         + Vector3.Up * 0.5f,
                     Source = EntityId.None,
                 }

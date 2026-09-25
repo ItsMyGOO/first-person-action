@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="EnemyDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Game/Gameplay/Characters/EnemyDefinition.cs" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+DisplayName = "重木桩"
+BodyRadius = 0.6
+BodyMass = 800.0
+BodyPushResistance = 800.0

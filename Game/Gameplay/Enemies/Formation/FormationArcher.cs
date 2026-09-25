@@ -4,30 +4,19 @@ namespace FirstPersonAction.Combat;
 
 /// <summary>
 /// 阵型后排弓手/法师（M5 §1.3）：覆写移动意图为「槽位点站定」，
-/// 完整保留基类瞄准红线 → Projectile.Spawn → 冷却链路；
-/// 伤害/冷却经导出参数可调（弓默认同 M4 远程；法师场景改 Tint/伤害/冷却）。
+/// 完整保留基类瞄准红线 → Projectile.Spawn → 冷却链路。
+/// 数值经 EnemyDefinition 驱动（弓/法差异在各自 .tres：伤害/冷却等）。
 /// </summary>
 public partial class FormationArcher : RangedEnemy, IFormationMember
 {
     [Export]
     public int SlotIndex { get; set; }
 
-    [Export]
-    public float ArrowDamage = 10f;
-
-    [Export]
-    public float ArrowPoiseDamage = 12f;
-
-    [Export]
-    public float ArrowCooldownSeconds = CombatTuning.RangedAttackCooldown;
-
     public bool Alive => CanBeHit;
 
     public Vector3 SlotPosition { get; set; }
 
     public float SlotFacing { get; set; }
-
-    protected override float AttackCooldownSeconds => ArrowCooldownSeconds;
 
     protected override void OnEnemyReady()
     {
@@ -48,15 +37,6 @@ public partial class FormationArcher : RangedEnemy, IFormationMember
             return Vector3.Zero;
         }
 
-        return toSlot / Mathf.Max(slotDist, 0.0001f) * CombatTuning.FormationMoveSpeed;
+        return toSlot / Mathf.Max(slotDist, 0.0001f) * Def.MoveSpeed;
     }
-
-    protected override HitData NewArrowHit(Vector3 direction) =>
-        new()
-        {
-            Damage = ArrowDamage,
-            PoiseDamage = ArrowPoiseDamage,
-            Knockback = direction * 2f,
-            Source = FirstPersonAction.Core.EntityId.None,
-        };
 }

@@ -1,4 +1,4 @@
-[gd_scene load_steps=15 format=3]
+[gd_scene load_steps=16 format=3]
 
 [ext_resource type="Script" path="res://Game/Scenes/Main.cs" id="0_main"]
 [ext_resource type="PackedScene" path="res://Game/Scenes/EnemyDummy.tscn" id="2_dummy"]
@@ -13,6 +13,7 @@
 [ext_resource type="PackedScene" path="res://Game/Scenes/EnemyKnight.tscn" id="11_knight"]
 [ext_resource type="PackedScene" path="res://Game/Scenes/EnemyFormationArcher.tscn" id="12_archer"]
 [ext_resource type="PackedScene" path="res://Game/Scenes/EnemyFormationMage.tscn" id="13_mage"]
+[ext_resource type="Resource" path="res://Game/Config/Enemies/HeavyDummy.tres" id="14_heavydef"]
 
 [sub_resource type="PlaneMesh" id="floor_mesh"]
 size = Vector2(40, 40)
@@ -101,9 +102,7 @@ position = Vector3(1.8, 0.2, -4)
 
 [node name="HeavyDummy" parent="." instance=ExtResource("2_dummy")]
 position = Vector3(0, 0.2, -8)
-BodyRadius = 0.6
-BodyMass = 800.0
-BodyPushResistance = 800.0
+Definition = ExtResource("14_heavydef")
 
 [node name="Hud" parent="." instance=ExtResource("4_hud")]
 
@@ -139,13 +138,11 @@ script = ExtResource("8_group")
 
 [node name="Guard1" parent="EnemyGroup" instance=ExtResource("6_guard")]
 position = Vector3(-1.2, 0, 0.3)
-BodyPushResistance = 9999.0
 WingSide = -1.0
 AnchorPath = NodePath("../Ranged1")
 
 [node name="Guard2" parent="EnemyGroup" instance=ExtResource("6_guard")]
 position = Vector3(1.2, 0, 0.3)
-BodyPushResistance = 9999.0
 AnchorPath = NodePath("../Ranged1")
 
 [node name="Swarm1" parent="EnemyGroup" instance=ExtResource("7_swarm")]

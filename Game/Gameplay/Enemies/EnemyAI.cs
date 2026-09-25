@@ -1,3 +1,4 @@
+using FirstPersonAction.Characters;
 using FirstPersonAction.Core;
 using FirstPersonAction.Spatial;
 using Godot;
@@ -9,6 +10,8 @@ namespace FirstPersonAction.Combat;
 /// 强制位移通道/受击闪红。子类只写行为（低级兵/护卫/远程）。
 /// 未激活时不索敌不移动——由 EnemyGroup 聚合激活（ InitiallyActive=true 的编组直接激活）。
 /// 单位间阻挡与被推挤由逻辑空间系统处理（SpatialAgent 参数按实例导出覆盖）。
+/// 数值经 EnemyDefinition（.tres）驱动：场景配置 Definition 后其为权威，
+/// MaxPoise/Body* 等导出仅作未配置定义时的回退。
 /// </summary>
 public abstract partial class EnemyAI : CharacterBody3D, ICombatTarget, IExecutionTarget
 {
@@ -17,6 +20,11 @@ public abstract partial class EnemyAI : CharacterBody3D, ICombatTarget, IExecuti
     [Export]
     public Color Tint = new(0.55f, 0.42f, 0.4f);
 
+    /// <summary>数值定义（.tres 数据驱动）。未配置时回退到下方导出值。</summary>
+    [Export]
+    public EnemyDefinition? Definition;
+
+    // —— 回退导出（仅 Definition 为空时生效；正式场景应全部走 .tres）——
     [Export]
     public float MaxPoise = 60f;
 
@@ -29,6 +37,9 @@ public abstract partial class EnemyAI : CharacterBody3D, ICombatTarget, IExecuti
 
     [Export]
     public float BodyPushResistance = 100f;
+
+    /// <summary>生效的数值定义：场景的 Definition，或由回退导出合成的等价定义。</summary>
+    protected EnemyDefinition Def { get; private set; } = null!;
 
     protected HealthComponent Health = null!;
     protected HitReactionMachine Reaction = null!;
@@ -65,14 +76,23 @@ public abstract partial class EnemyAI : CharacterBody3D, ICombatTarget, IExecuti
 
     public override void _Ready()
     {
+        Def =
+            Definition
+            ?? new EnemyDefinition
+            {
+                MaxPoise = MaxPoise,
+                BodyRadius = BodyRadius,
+                BodyMass = BodyMass,
+                BodyPushResistance = BodyPushResistance,
+            };
         Health = GetNode<HealthComponent>("HealthComponent");
         Mesh = GetNode<MeshInstance3D>("Mesh");
         Agent = GetNode<SpatialAgent>("SpatialAgent");
-        Agent.Radius = BodyRadius;
-        Agent.GameplayMass = BodyMass;
-        Agent.PushResistance = BodyPushResistance;
+        Agent.Radius = Def.BodyRadius;
+        Agent.GameplayMass = Def.BodyMass;
+        Agent.PushResistance = Def.BodyPushResistance;
         Reaction = new HitReactionMachine(
-            MaxPoise,
+            Def.MaxPoise,
             CombatTuning.StaggerSeconds,
             CombatTuning.DownedSeconds
         );

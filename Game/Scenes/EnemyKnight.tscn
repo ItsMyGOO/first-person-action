@@ -1,8 +1,9 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://Game/Gameplay/Enemies/Formation/FormationMelee.cs" id="1_knight"]
 [ext_resource type="Script" path="res://Game/Gameplay/Combat/HealthComponent.cs" id="2_health"]
 [ext_resource type="Script" path="res://Game/Gameplay/Spatial/SpatialAgent.cs" id="3_spatial"]
+[ext_resource type="Resource" path="res://Game/Config/Enemies/Knight.tres" id="4_def"]
 
 [sub_resource type="CapsuleShape3D" id="cap_shape"]
 radius = 0.45
@@ -16,10 +17,8 @@ height = 1.8
 collision_layer = 4
 collision_mask = 1
 script = ExtResource("1_knight")
+Definition = ExtResource("4_def")
 Tint = Color(0.36, 0.33, 0.4, 1)
-MaxPoise = 120.0
-BodyMass = 500.0
-BodyPushResistance = 500.0
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]
 shape = SubResource("cap_shape")

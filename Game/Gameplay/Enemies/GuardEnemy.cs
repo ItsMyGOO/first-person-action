@@ -20,10 +20,7 @@ public partial class GuardEnemy : EnemyAI
     [Export]
     public float WingSide = 1f; // 1 = 右翼，-1 = 左翼
 
-    private readonly AttackCycle _attack = new(
-        CombatTuning.GuardAttackWindup,
-        CombatTuning.GuardAttackCooldown
-    );
+    private AttackCycle _attack = null!; // OnEnemyReady 时按数值定义构建
 
     private EnemyAI? _anchor;
     private bool _engaged;
@@ -31,6 +28,7 @@ public partial class GuardEnemy : EnemyAI
     protected override void OnEnemyReady()
     {
         _anchor = GetNodeOrNull<EnemyAI>(AnchorPath);
+        _attack = new AttackCycle(Def.AttackWindup, Def.AttackCooldown);
     }
 
     /// <summary>前摇预告色（闪红优先）。</summary>
@@ -49,11 +47,11 @@ public partial class GuardEnemy : EnemyAI
         }
 
         float playerDist = GlobalPosition.DistanceTo(player.GlobalPosition);
-        if (!_engaged && playerDist < CombatTuning.GuardEngageRange)
+        if (!_engaged && playerDist < Def.EngageRange)
         {
             _engaged = true;
         }
-        else if (_engaged && playerDist > CombatTuning.GuardLeashRange)
+        else if (_engaged && playerDist > Def.LeashRange)
         {
             _engaged = false;
             _attack.Stop();
@@ -77,7 +75,7 @@ public partial class GuardEnemy : EnemyAI
             Vector3 side = _anchor.GlobalTransform.Basis.X;
             side.Y = 0f;
             side = side.Normalized();
-            target = _anchor.GlobalPosition + side * (CombatTuning.GuardWingOffset * WingSide);
+            target = _anchor.GlobalPosition + side * (Def.WingOffset * WingSide);
         }
         else
         {
@@ -90,7 +88,7 @@ public partial class GuardEnemy : EnemyAI
         if (dist > 0.25f)
         {
             Vector3 dir = toTarget / Mathf.Max(dist, 0.0001f);
-            DesiredHorizontal = dir * CombatTuning.GuardMoveSpeed;
+            DesiredHorizontal = dir * Def.MoveSpeed;
             FaceTowards(GlobalPosition + dir);
         }
         else
@@ -108,17 +106,17 @@ public partial class GuardEnemy : EnemyAI
         FaceTowards(player.GlobalPosition);
 
         // 攻击中玩家拉开距离 → 重新逼近
-        if (_attack.Phase == AttackCyclePhase.Cooldown && dist > CombatTuning.GuardAttackRange)
+        if (_attack.Phase == AttackCyclePhase.Cooldown && dist > Def.AttackRange)
         {
             _attack.Stop();
         }
 
         if (_attack.Phase == AttackCyclePhase.Idle)
         {
-            if (dist > CombatTuning.GuardAttackRange)
+            if (dist > Def.AttackRange)
             {
                 Vector3 dir = toPlayer / Mathf.Max(dist, 0.0001f);
-                DesiredHorizontal = dir * CombatTuning.GuardMoveSpeed;
+                DesiredHorizontal = dir * Def.MoveSpeed;
                 return;
             }
 
@@ -139,8 +137,8 @@ public partial class GuardEnemy : EnemyAI
         List<ICombatTarget> hits = MeleeArcQuery.FindHits(
             GlobalPosition,
             ForwardFlat(),
-            CombatTuning.GuardAttackRange,
-            CombatTuning.GuardAttackHalfAngleDeg,
+            Def.AttackRange,
+            Def.AttackHalfAngleDeg,
             new List<ICombatTarget> { player },
             t => t.Center
         );
@@ -150,11 +148,10 @@ public partial class GuardEnemy : EnemyAI
             target.ApplyHit(
                 new HitData
                 {
-                    Damage = CombatTuning.GuardAttackDamage,
-                    PoiseDamage = CombatTuning.GuardAttackPoiseDamage,
+                    Damage = Def.AttackDamage,
+                    PoiseDamage = Def.AttackPoiseDamage,
                     Knockback =
-                        (player.GlobalPosition - GlobalPosition).Normalized()
-                            * CombatTuning.GuardAttackKnockback
+                        (player.GlobalPosition - GlobalPosition).Normalized() * Def.AttackKnockback
                         + Vector3.Up * 0.5f,
                     Source = EntityId.None,
                 }

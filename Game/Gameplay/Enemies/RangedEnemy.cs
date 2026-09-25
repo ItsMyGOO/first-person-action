@@ -17,20 +17,21 @@ public partial class RangedEnemy : EnemyAI
 
     private static readonly Color AimLineColor = new(1f, 0.12f, 0.12f);
 
-    private readonly KiteBand _band = new(CombatTuning.RangedKiteNear, CombatTuning.RangedKiteFar);
-
+    private KiteBand _band; // OnEnemyReady 时按数值定义构建（结构体，使用前必经 _Ready）
     private MeshInstance3D _aimLine = null!;
     private float _aimElapsed;
     private float _cooldown;
 
-    /// <summary>瞄准预告时长（阵型变体可调）。</summary>
-    protected virtual float AimSeconds => CombatTuning.RangedAimSeconds;
+    /// <summary>瞄准预告时长（数值定义驱动）。</summary>
+    protected virtual float AimSeconds => Def.AimSeconds;
 
-    /// <summary>射击冷却（阵型变体可调）。</summary>
-    protected virtual float AttackCooldownSeconds => CombatTuning.RangedAttackCooldown;
+    /// <summary>射击冷却（数值定义驱动）。</summary>
+    protected virtual float AttackCooldownSeconds => Def.RangedAttackCooldown;
 
     protected override void OnEnemyReady()
     {
+        _band = new KiteBand(Def.KiteNear, Def.KiteFar);
+
         // 瞄准预告线（占位：细长红盒，TopLevel 世界系摆放，长度=与目标距离）
         _aimLine = new MeshInstance3D
         {
@@ -56,7 +57,7 @@ public partial class RangedEnemy : EnemyAI
         }
 
         Vector3 dir = toPlayer / Mathf.Max(distance, 0.0001f);
-        float speed = CombatTuning.RangedMoveSpeed * (action == KiteAction.Retreat ? -1f : 1f);
+        float speed = Def.MoveSpeed * (action == KiteAction.Retreat ? -1f : 1f);
         return dir * speed;
     }
 
@@ -142,20 +143,20 @@ public partial class RangedEnemy : EnemyAI
             this,
             origin + direction * 0.5f,
             direction,
-            speed: 14f,
+            speed: Def.ArrowSpeed,
             NewArrowHit(direction),
             gravity: 0f,
             collisionMask: ArrowMask
         );
     }
 
-    /// <summary>箭矢伤害数据（阵型变体可调参）。</summary>
+    /// <summary>箭矢伤害数据（数值定义驱动，子类可覆写特殊箭）。</summary>
     protected virtual HitData NewArrowHit(Vector3 direction) =>
         new()
         {
-            Damage = 10f,
-            PoiseDamage = 12f,
-            Knockback = direction * 2f,
+            Damage = Def.ArrowDamage,
+            PoiseDamage = Def.ArrowPoiseDamage,
+            Knockback = direction * Def.ArrowKnockback,
             Source = EntityId.None,
         };
 

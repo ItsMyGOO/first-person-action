@@ -546,14 +546,8 @@ public partial class Player : CharacterBody3D, IAbilityContext, ICombatTarget
 
         // 边界：收敛途中目标被外部击杀/移除 → 干净中止、无奖励（规格 §5）。
         // 冲击后的目标死亡是本流程的结算而非中止——只在冲击前检查。
-        if (
-            !_executionStruck
-            && (
-                _executionTarget == null
-                || !IsInstanceValid(_executionTarget)
-                || _executionTarget.IsDead
-            )
-        )
+        EnemyAI? target = _executionTarget;
+        if (!_executionStruck && (target == null || !IsInstanceValid(target) || target.IsDead))
         {
             EndExecution(reward: false);
             return;
@@ -565,12 +559,8 @@ public partial class Player : CharacterBody3D, IAbilityContext, ICombatTarget
             float t = _executionElapsed / CombatTuning.ExecutionConvergeSeconds;
             _convergence!.Sample(t, out Vector3 playerPos, out Vector3 enemyPos);
             GlobalPosition = new Vector3(playerPos.X, GlobalPosition.Y, playerPos.Z);
-            _executionTarget.GlobalPosition = new Vector3(
-                enemyPos.X,
-                _executionTarget.GlobalPosition.Y,
-                enemyPos.Z
-            );
-            Vector3 to = _executionTarget.GlobalPosition - GlobalPosition;
+            target.GlobalPosition = new Vector3(enemyPos.X, target.GlobalPosition.Y, enemyPos.Z);
+            Vector3 to = target.GlobalPosition - GlobalPosition;
             to.Y = 0f;
             if (to.LengthSquared() > 1e-6f)
             {
@@ -586,7 +576,7 @@ public partial class Player : CharacterBody3D, IAbilityContext, ICombatTarget
             _executionStruck = true;
             HitstopManager.Request(CombatTuning.ExecutionHitstopMs);
             ExecutionImpact?.Invoke();
-            _executionTarget.ExecuteKill();
+            target.ExecuteKill();
         }
 
         if (

@@ -145,10 +145,9 @@ public class SurroundSlotAssignerTests
 
 public class KiteBandTests
 {
-    private static readonly KiteBand Band = new(
-        CombatTuning.RangedKiteNear,
-        CombatTuning.RangedKiteFar
-    );
+    // 数值已迁移至 EnemyDefinition（Game/Config/Enemies/Ranged.tres）；
+    // 纯逻辑测试自带边界值，不与配置耦合
+    private static readonly KiteBand Band = new(7f, 11f);
 
     [Theory]
     [InlineData(5f, KiteAction.Retreat)] // < 7m 后退

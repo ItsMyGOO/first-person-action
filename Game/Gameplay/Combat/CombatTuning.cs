@@ -101,37 +101,9 @@ public static class CombatTuning
     public const float ArrowPoiseDamageScale = 2f; // 箭矢韧性伤 = 伤害 × 此系数
     public const float ArrowKnockback = 1.5f; // 箭矢击退冲量（米/秒）
 
-    // —— 敌人 AI（M4）——
+    // —— 敌人 AI 系统参数（M4；敌人个体数值已迁移至 Game/Config/Enemies/*.tres）——
     public const float EnemyGroupActivateRadius = 12f; // 编组聚合激活：玩家接近半径
     public const float SlotReassignInterval = 0.4f; // 环绕槽位重算间隔
-    public const float SwarmMoveSpeed = 3.2f; // 低级兵移速
-    public const float SwarmAttackRange = 1.7f; // 低级兵进入攻击周期的高速距离
-    public const float SwarmAttackHalfAngleDeg = 60f; // 低级兵攻击锥形半角
-    public const float SwarmAttackWindup = 0.5f; // 低级兵前摇（预告）
-    public const float SwarmAttackCooldown = 1.2f; // 低级兵攻击冷却
-    public const float SwarmAttackDamage = 8f;
-    public const float SwarmAttackPoiseDamage = 10f;
-    public const float SwarmAttackKnockback = 2.5f;
-
-    // —— 远程敌人（M4，规格距离带）——
-    public const float RangedKiteNear = 7f; // < 近于此距离后退
-    public const float RangedKiteFar = 11f; // > 远于此距离接近
-    public const float RangedMoveSpeed = 2.6f;
-    public const float RangedAimSeconds = 0.7f; // 瞄准预告（红线）时长
-    public const float RangedAttackCooldown = 2.4f;
-
-    // —— 护卫敌人（M4）——
-    public const float GuardWingOffset = 1.2f; // 左右翼跟随偏移
-    public const float GuardEngageRange = 2.6f; // 玩家近身才转入攻击
-    public const float GuardLeashRange = 3.5f; // 玩家离开即回归跟随（leash 滞回）
-    public const float GuardMoveSpeed = 3.6f;
-    public const float GuardAttackRange = 2.0f;
-    public const float GuardAttackHalfAngleDeg = 60f;
-    public const float GuardAttackWindup = 0.45f;
-    public const float GuardAttackCooldown = 1.5f;
-    public const float GuardAttackDamage = 12f;
-    public const float GuardAttackPoiseDamage = 15f;
-    public const float GuardAttackKnockback = 3f;
 
     // —— 手感打磨（M4 §5，纯表现层）——
     public const float ChargeFovKick = 10f; // 冲锋 FOV 拉伸峰值
@@ -148,16 +120,8 @@ public static class CombatTuning
     public const float SpeedVignetteStrength = 0.35f; // 暗角强度
     public const float SpeedLinesMaxIntensity = 1.0f; // 强度上限
 
-    // —— 阵型（M5，文档 §23 MVP）——
-    public const float FormationMoveSpeed = 3.0f; // 阵型成员回槽速度
+    // —— 阵型系统（M5；成员个体数值在各自 .tres，这里只留系统参数）——
     public const float FormationSlotSnapDist = 0.15f; // 到槽判定距离
-    public const float FormationMeleeAttackRange = 2.2f; // 前排近战攻击距离
-    public const float FormationMeleeAttackHalfAngleDeg = 60f;
-    public const float FormationMeleeAttackWindup = 0.45f;
-    public const float FormationMeleeAttackCooldown = 1.6f;
-    public const float FormationMeleeAttackDamage = 10f;
-    public const float FormationMeleeAttackPoiseDamage = 18f;
-    public const float FormationMeleeAttackKnockback = 2.5f;
 
     // —— 处决（M4 顺延项，规格 §5：Doom 式按键处决，短演出，不允许明显吸附）——
     public const float ExecutionMinRange = 0.8f; // 距离带下界（贴脸不可处决）

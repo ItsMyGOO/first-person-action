@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="EnemyDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Game/Gameplay/Characters/EnemyDefinition.cs" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+DisplayName = "阵型弓手"
+MoveSpeed = 3.0
+AimSeconds = 0.7
+RangedAttackCooldown = 2.4
+ArrowDamage = 10.0
+ArrowPoiseDamage = 12.0
+ArrowKnockback = 2.0
+ArrowSpeed = 14.0
