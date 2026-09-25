@@ -109,6 +109,7 @@ public partial class CombatSmokeTestRunner : Node
             ("霸体打断", SuperArmorPhase),
             ("玩家死亡", PlayerDeathPhase),
             ("处决全流程", ExecutionPhase),
+            ("刺客疾行", AssassinPhase),
         };
 
     // —— 阶段 ——
@@ -635,6 +636,63 @@ public partial class CombatSmokeTestRunner : Node
             $"处决回血奖励：HP {php.CurrentHealth}（90 + 120×15%）"
         );
         Check(dhp.CurrentHealth == 0f, "目标血量归零");
+
+        await EndPhase(main);
+    }
+
+    /// <summary>刺客疾行（M7，规格 §2 技能原型）：穿人冲刺——沿 Dummy3 中线 7m 直穿，
+    /// 不推挤不挡停（对照冲锋的推开/挡停语义）；速度线触发；后跳位移。</summary>
+    private async Task AssassinPhase()
+    {
+        (Node main, Player player) = await StartPhase("res://Game/Config/Characters/Assassin.tres");
+        DummyEnemy dummy3 = main.GetNode<DummyEnemy>("Dummy3");
+        HealthComponent hp3 = main.GetNode<HealthComponent>("Dummy3/HealthComponent");
+        SpeedLines speedLines = main.GetNode<SpeedLines>("Hud/SpeedLines");
+
+        // 普攻复用战士连段（近战风格）
+        player.GlobalPosition = dummy3.GlobalPosition + new Vector3(0, 0.2f, 1.6f);
+        player.Rotation = Vector3.Zero;
+        float before = hp3.CurrentHealth;
+        PressRelease("attack");
+        await Frames(40);
+        Check(
+            hp3.CurrentHealth < before,
+            $"刺客普攻命中（复用近战连段）：HP {before} -> {hp3.CurrentHealth}"
+        );
+        await Frames(40); // 连段收尾
+
+        // 疾行（skill_1）：沿 Dummy3(1.8,·,-4) 中线向北直穿——空间豁免期间
+        // 逻辑阻挡对玩家不生效（对照：普通行走会在半径和 ~0.95m 处被挡停）
+        player.GlobalPosition = new Vector3(1.8f, 0.2f, -1.0f);
+        player.Rotation = Vector3.Zero; // 面向 -Z
+        await Frames(5);
+        Vector3 d3Before = dummy3.GlobalPosition;
+        PressRelease("skill_1");
+        await Frames(6); // 疾行 0.30s ≈ 18 帧，行进中
+        Check(player.IsDashing, "疾行进行中");
+        Check(
+            speedLines.CurrentIntensity > 0.5f,
+            $"疾行触发速度线 {speedLines.CurrentIntensity:F2} > 0.5"
+        );
+        await Frames(30); // 冲刺结束 + 余量
+        Check(
+            player.GlobalPosition.Z < -6f,
+            $"穿人冲刺越过木桩：Z={player.GlobalPosition.Z:F2}（7m 位移未被挡停）"
+        );
+        float d3moved = (dummy3.GlobalPosition - d3Before).Length();
+        Check(d3moved < 0.3f, $"穿人不推挤：路径上木桩位移 {d3moved:F2}m < 0.3m");
+        Check(!player.IsCastingSkill, "疾行已结束");
+
+        // 后跳（skill_2）：朝身后位移 ~2.5m
+        player.Rotation = Vector3.Zero;
+        await Frames(5);
+        float zBefore = player.GlobalPosition.Z;
+        PressRelease("skill_2");
+        await Frames(25);
+        Check(
+            player.GlobalPosition.Z > zBefore + 1.5f,
+            $"后跳位移 {player.GlobalPosition.Z - zBefore:F2}m > 1.5m（朝身后 +Z）"
+        );
 
         await EndPhase(main);
     }

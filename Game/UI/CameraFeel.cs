@@ -42,7 +42,7 @@ public partial class CameraFeel : Node
             }
         }
 
-        bool dashing = _player.IsChargeDashing;
+        bool dashing = _player.IsDashing; // 冲锋/疾行共用冲刺表现（FOV 拉伸+抖动+速度线）
         bool airborne = _player.IsLeapAirborne;
 
         _chargeBlend = dashing

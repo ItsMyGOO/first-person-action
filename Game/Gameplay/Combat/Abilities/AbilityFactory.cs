@@ -14,6 +14,7 @@ public static class AbilityFactory
             SkillKind.Charge => new ChargeAbility(CreateDefinition(kind)),
             SkillKind.LeapSlam => new LeapSlamAbility(CreateDefinition(kind)),
             SkillKind.Backstep => new BackstepAbility(CreateDefinition(kind)),
+            SkillKind.DashThrough => new DashThroughAbility(CreateDefinition(kind)),
             _ => throw new System.ArgumentOutOfRangeException(nameof(kind), kind, null),
         };
 
@@ -70,6 +71,15 @@ public static class AbilityFactory
                 Cooldown = 6f,
                 MoveDistance = 2.5f,
                 MoveDuration = 0.25f,
+                ActiveMoveScale = 0f,
+            },
+            SkillKind.DashThrough => new SkillDefinition
+            {
+                Kind = kind,
+                DisplayName = "疾行",
+                Cooldown = 4f,
+                MoveDistance = 7f,
+                MoveDuration = 0.30f, // 7m/0.30s ≈ 23m/s：快过冲锋，代价是无推挤无霸体
                 ActiveMoveScale = 0f,
             },
             _ => throw new System.ArgumentOutOfRangeException(nameof(kind), kind, null),

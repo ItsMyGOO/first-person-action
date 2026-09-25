@@ -89,6 +89,12 @@ public partial class Player : CharacterBody3D, IAbilityContext, ICombatTarget
     /// <summary>冲锋冲刺进行中（表现层 CameraFeel/冒烟断言用——M4 §5）。</summary>
     public bool IsChargeDashing => _activeAbility is ChargeAbility { IsCasting: true };
 
+    /// <summary>任意冲刺位移技进行中（冲锋/疾行）：速度线等冲刺表现的统一判据。</summary>
+    public bool IsDashing =>
+        _activeAbility
+            is ChargeAbility { IsCasting: true }
+                or DashThroughAbility { IsCasting: true };
+
     /// <summary>跳劈滞空中（起跳后、落地结算前）。</summary>
     public bool IsLeapAirborne => _activeAbility is LeapSlamAbility { IsCasting: true };
 
@@ -618,6 +624,7 @@ public partial class Player : CharacterBody3D, IAbilityContext, ICombatTarget
         _forced = null;
         _agent.CurrentMovementForce = _agent.MovementForce;
         _superArmor = false;
+        _agent.SpatialExempt = false; // 疾行穿人豁免统一在此解除（对照霸体的清理路径）
         _action = ActionState.None;
     }
 
@@ -882,6 +889,8 @@ public partial class Player : CharacterBody3D, IAbilityContext, ICombatTarget
         Velocity = new Vector3(Velocity.X, velocityY, Velocity.Z);
 
     void IAbilityContext.SetSuperArmor(bool enabled) => _superArmor = enabled;
+
+    void IAbilityContext.SetSpatialExempt(bool enabled) => _agent.SpatialExempt = enabled;
 
     List<ICombatTarget> IAbilityContext.QueryTargets() => FindTargets();
 

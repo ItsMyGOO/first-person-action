@@ -28,6 +28,9 @@ public interface IAbilityContext
 
     void SetSuperArmor(bool enabled);
 
+    /// <summary>空间豁免开关（疾行/穿人）：豁免期间对逻辑空间系统隐身，不推人也不被挡。</summary>
+    void SetSpatialExempt(bool enabled);
+
     /// <summary>收集当前可被命中的目标。</summary>
     List<ICombatTarget> QueryTargets();
 

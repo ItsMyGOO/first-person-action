@@ -46,7 +46,7 @@ public abstract class Ability
         return true;
     }
 
-    /// <summary>外部打断（受击/处决等将来的取消源）。默认回到空闲并清理位移/霸体。</summary>
+    /// <summary>外部打断（受击/处决等将来的取消源）。默认回到空闲并清理位移/霸体/空间豁免。</summary>
     public virtual void Cancel(IAbilityContext ctx)
     {
         if (!IsCasting)
@@ -57,6 +57,7 @@ public abstract class Ability
         IsCasting = false;
         ctx.CancelForcedMovement();
         ctx.SetSuperArmor(false);
+        ctx.SetSpatialExempt(false);
     }
 
     protected abstract void OnCastStart(IAbilityContext ctx);

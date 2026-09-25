@@ -78,6 +78,7 @@ public class AbilityTests
         public ForcedMovement? Requested;
         public float LaunchedY;
         public bool SuperArmor;
+        public bool SpatialExempt;
         public int HitLandedNotifications;
         public int LeapLandedNotifications;
 
@@ -97,6 +98,8 @@ public class AbilityTests
         void IAbilityContext.LaunchUp(float velocityY) => LaunchedY = velocityY;
 
         void IAbilityContext.SetSuperArmor(bool enabled) => SuperArmor = enabled;
+
+        void IAbilityContext.SetSpatialExempt(bool enabled) => SpatialExempt = enabled;
 
         List<ICombatTarget> IAbilityContext.QueryTargets() => Targets;
 
@@ -187,5 +190,34 @@ public class AbilityTests
         Assert.NotNull(ctx.Requested);
         // 方向 = 前方的反向（-Z 前方 → 请求位移沿 +Z）
         Assert.True(ctx.Requested!.Direction.Z > 0);
+    }
+
+    [Fact]
+    public void DashThrough_ExemptsSpatial_WithoutRaisingPushForce()
+    {
+        var ability = AbilityFactory.Create(SkillKind.DashThrough);
+        var ctx = new FakeContext();
+        SkillDefinition def = Def(SkillKind.DashThrough);
+
+        Assert.True(ability.TryCast(ctx));
+        Assert.True(ctx.SpatialExempt); // 穿人：冲刺期间对空间系统隐身
+        Assert.NotNull(ctx.Requested); // 直线强制位移
+        ability.Update(0.1f, ctx);
+        Assert.Equal(100f, ctx.MovementForce); // 疾行不改推力——穿人靠豁免而非推挤
+
+        ability.Update(def.MoveDuration, ctx);
+        Assert.False(ability.IsCasting);
+    }
+
+    [Fact]
+    public void DashThrough_Cancel_ClearsExemptionAndMovement()
+    {
+        var ability = AbilityFactory.Create(SkillKind.DashThrough);
+        var ctx = new FakeContext();
+        Assert.True(ability.TryCast(ctx));
+        ability.Cancel(ctx);
+        Assert.False(ctx.SpatialExempt); // 打断路径不留豁免残渣（否则永久穿人）
+        Assert.Null(ctx.Requested);
+        Assert.False(ability.IsCasting);
     }
 }

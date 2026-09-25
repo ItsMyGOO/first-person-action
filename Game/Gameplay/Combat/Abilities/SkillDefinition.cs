@@ -6,6 +6,7 @@ public enum SkillKind
     Charge = 1, // 冲锋：直线位移，按挤开规则推人/被挡停
     LeapSlam = 2, // 跳劈：弧线强制位移 + 落地 AoE 击退
     Backstep = 3, // 后跳：弓手位移技，打断瞄准/蓄力
+    DashThrough = 4, // 疾行（刺客）：直线位移 + 空间豁免，从人群中穿过
 }
 
 /// <summary>
