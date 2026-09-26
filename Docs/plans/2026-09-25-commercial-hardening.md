@@ -54,10 +54,14 @@
 - **键位设置 UI**（`157d878`）：重绑捕获/保存/恢复默认闭环。冒烟 +7。
 - **M7 刺客**（`db8ba95`）：DashThroughAbility 疾行穿人（空间豁免）+ Assassin.tres
   （选人零代码出现）+ IsDashing 冲刺表现泛化。单测 +2、冒烟 +7。
-- **敌人数值 .tres 化**（本批）：EnemyDefinition 资源 + 九个 Game/Config/Enemies/*.tres，
+- **敌人数值 .tres 化**（`b7675c1`）：EnemyDefinition 资源 + 九个 Game/Config/Enemies/*.tres，
   五个敌人类全部改读定义；CombatTuning 删 32 个敌人常量（保留系统参数）；
   顺带修正 DummyEnemy 并入基类时丢失的木桩默认体格（0.5/250/250）。
+- **占位音频管线**（本批）：Tools/generate_placeholder_sfx.gd 程序合成九个 WAV
+  （挥砍/冲刺/近战命中/箭命中/放箭/处决/受伤/敌死/UI 点击）+ Sfx autoload
+  （8 路播放池 → SFX 总线）+ 全事件站点接线。冒烟 +5 项（加载/池/总线/播放态/命中集成）。
+  真实音频资产到位后同名替换 Game/Audio/*.wav 即可。
 
 ## 未处理（后续里程碑）
 
-- 音频/美术内容生产（管线已就绪：总线、gitattributes、目录）
+- 美术内容生产（音频已就占位管线；美术仍是代码生成图元）

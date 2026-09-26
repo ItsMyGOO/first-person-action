@@ -96,6 +96,7 @@ public partial class CombatSmokeTestRunner : Node
             ("箭矢方向回归", ArrowDirectionPhase),
             ("改键", KeybindPhase),
             ("键位设置UI", KeybindUiPhase),
+            ("音效管线", SfxPhase),
             ("远程敌人", RangedEnemyPhase),
             ("编组激活", EnemyGroupPhase),
             ("手感事件", FeelPhase),
@@ -357,6 +358,53 @@ public partial class CombatSmokeTestRunner : Node
         pauseMenu.CloseKeybindSettings();
         await Frames(1);
         Check(!pauseMenu.IsKeybindVisible, "面板关闭");
+    }
+
+    /// <summary>音效管线（占位音频）：九个音效全部加载、播放池路由 SFX 总线、
+    /// 事件站点接线（近战命中 → swing/hit_melee）。</summary>
+    private async Task SfxPhase()
+    {
+        var sfx = GetNode<Core.Sfx>("/root/Sfx");
+        string[] expected =
+        {
+            "swing",
+            "dash",
+            "hit_melee",
+            "hit_arrow",
+            "arrow_release",
+            "execute",
+            "hurt",
+            "enemy_die",
+            "ui_click",
+        };
+        int loaded = 0;
+        foreach (string name in expected)
+        {
+            if (sfx.Has(name))
+            {
+                loaded++;
+            }
+        }
+
+        Check(loaded == expected.Length, $"九个占位音效全部加载（{loaded}/{expected.Length}）");
+
+        Core.Sfx.Play("hit_melee");
+        Check(sfx.LastPlayed == "hit_melee", "播放请求进入池（LastPlayed 记录）");
+        var poolPlayer = sfx.GetChild(0) as AudioStreamPlayer;
+        Check(poolPlayer != null && poolPlayer.Bus == "SFX", "播放池路由到 SFX 总线");
+        Check(poolPlayer is { Playing: true }, "播放器实际进入播放状态（headless Dummy 音频驱动）");
+
+        // 事件集成：近战砍木桩 → 挥砍音 + 命中音依次被请求
+        (Node main, Player warrior) = await StartPhase("res://Game/Config/Characters/Warrior.tres");
+        DummyEnemy dummy = main.GetNode<DummyEnemy>("Dummy1");
+        warrior.GlobalPosition = dummy.GlobalPosition + new Vector3(0, 0.2f, 1.6f);
+        warrior.Rotation = Vector3.Zero;
+        sfx.LastPlayed = "";
+        PressRelease("attack");
+        await Frames(40);
+        Check(sfx.LastPlayed == "hit_melee", $"近战命中播打击音（LastPlayed={sfx.LastPlayed}）");
+
+        await EndPhase(main);
     }
 
     /// <summary>远程敌人（M4）：9m 距离带内驻停瞄准（0.7s 红线预告）→ 射箭，

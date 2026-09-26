@@ -33,6 +33,7 @@ public partial class CharacterSelect : Control
                 CustomMinimumSize = new Vector2(220, 48),
             };
             string captured = path; // 闭包捕获循环变量
+            button.Pressed += ClickSound;
             button.Pressed += () => Select(captured);
             vbox.AddChild(button);
             buttons++;
@@ -43,6 +44,8 @@ public partial class CharacterSelect : Control
             GD.PushError($"[CharacterSelect] {CharactersDir} 下没有任何可用的角色定义");
         }
     }
+
+    private static void ClickSound() => Sfx.Play("ui_click");
 
     private static List<string> ListDefinitionPaths()
     {

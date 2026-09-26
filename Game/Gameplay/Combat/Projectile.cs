@@ -118,6 +118,7 @@ public partial class Projectile : Area3D
             }
 
             target.ApplyHit(_hit);
+            Sfx.Play("hit_arrow");
         }
 
         Consume(); // 命中单位或墙体
@@ -134,6 +135,7 @@ public partial class Projectile : Area3D
         if (body is ICombatTarget { CanBeHit: true } target)
         {
             target.ApplyHit(_hit);
+            Sfx.Play("hit_arrow");
         }
 
         Consume();

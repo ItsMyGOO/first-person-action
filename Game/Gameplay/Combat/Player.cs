@@ -427,6 +427,7 @@ public partial class Player : CharacterBody3D, IAbilityContext, ICombatTarget
         {
             _combo.TryAdvance();
             _action = ActionState.Melee;
+            Sfx.Play("swing");
         }
 
         // 技能：CD 中的技能不消费输入（缓冲 150ms 内自然过期）
@@ -485,6 +486,10 @@ public partial class Player : CharacterBody3D, IAbilityContext, ICombatTarget
             _activeAbility = ability;
             _action = ActionState.Skill;
             SkillStarted?.Invoke(ability.Def.Kind);
+            if (ability.Def.Kind is SkillKind.Charge or SkillKind.DashThrough)
+            {
+                Sfx.Play("dash");
+            }
         }
     }
 
@@ -576,6 +581,7 @@ public partial class Player : CharacterBody3D, IAbilityContext, ICombatTarget
             _executionStruck = true;
             HitstopManager.Request(CombatTuning.ExecutionHitstopMs);
             ExecutionImpact?.Invoke();
+            Sfx.Play("execute");
             target.ExecuteKill();
         }
 
@@ -661,6 +667,7 @@ public partial class Player : CharacterBody3D, IAbilityContext, ICombatTarget
         if (_combo.ConsumeHit())
         {
             HitstopManager.Request(CombatTuning.HitstopMs);
+            Sfx.Play("hit_melee");
         }
     }
 
@@ -707,6 +714,7 @@ public partial class Player : CharacterBody3D, IAbilityContext, ICombatTarget
     /// <summary>放箭：蓄力等级决定伤害/箭速/下坠；快速箭为弱化直射。</summary>
     private void FireArrow(int level, bool quickShot = false)
     {
+        Sfx.Play("arrow_release");
         Vector3 direction = -_camera.GlobalTransform.Basis.Z;
         Vector3 origin = _camera.GlobalPosition + direction * CombatTuning.ArrowMuzzleOffset;
         float damage = quickShot ? _def.QuickShotDamage : LevelValue(_def.ArrowDamageLevels, level);
@@ -909,6 +917,7 @@ public partial class Player : CharacterBody3D, IAbilityContext, ICombatTarget
         }
 
         _health.ApplyDamage(hit.Damage);
+        Sfx.Play("hurt");
 
         if (_health.IsDead)
         {

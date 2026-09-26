@@ -245,6 +245,7 @@ public abstract partial class EnemyAI : CharacterBody3D, ICombatTarget, IExecuti
     /// <summary>占位死亡：关闭碰撞、退出空间系统、下沉后销毁（与木桩一致）。</summary>
     protected virtual void OnDied()
     {
+        Core.Sfx.Play("enemy_die");
         SetCollisionLayerValue(PhysicsLayers.Enemy, false);
         Active = false;
         Agent.RemoveFromGroup(SpatialAgent.GroupName);

@@ -49,14 +49,24 @@ public partial class PauseMenu : CanvasLayer
         _panel.Visible = false;
         _keybindPanel = GetNode<Control>("KeybindPanel");
         _keybindPanel.Visible = false;
-        GetNode<Button>("Panel/Center/VBox/ResumeButton").Pressed += Resume;
-        GetNode<Button>("Panel/Center/VBox/KeybindButton").Pressed += OpenKeybindSettings;
-        GetNode<Button>("Panel/Center/VBox/RestartButton").Pressed += RestartLevel;
-        GetNode<Button>("Panel/Center/VBox/QuitButton").Pressed += QuitGame;
-        GetNode<Button>("KeybindPanel/Center/VBox/ResetButton").Pressed += ResetKeybinds;
-        GetNode<Button>("KeybindPanel/Center/VBox/CloseButton").Pressed += CloseKeybindSettings;
+        Click("Panel/Center/VBox/ResumeButton", Resume);
+        Click("Panel/Center/VBox/KeybindButton", OpenKeybindSettings);
+        Click("Panel/Center/VBox/RestartButton", RestartLevel);
+        Click("Panel/Center/VBox/QuitButton", QuitGame);
+        Click("KeybindPanel/Center/VBox/ResetButton", ResetKeybinds);
+        Click("KeybindPanel/Center/VBox/CloseButton", CloseKeybindSettings);
         BuildKeybindRows();
     }
+
+    /// <summary>按钮接线 + 统一点击音。</summary>
+    private void Click(string path, System.Action handler)
+    {
+        Button button = GetNode<Button>(path);
+        button.Pressed += ClickSound;
+        button.Pressed += handler;
+    }
+
+    private static void ClickSound() => Sfx.Play("ui_click");
 
     public override void _UnhandledInput(InputEvent @event)
     {

@@ -21,6 +21,7 @@ config/icon="res://icon.svg"
 HitstopManager="*res://Game/Gameplay/Combat/HitstopManager.cs"
 GameSession="*res://Game/Gameplay/Core/GameSession.cs"
 KeybindManager="*res://Game/Gameplay/Core/KeybindManager.cs"
+Sfx="*res://Game/Gameplay/Core/Sfx.cs"
 PauseMenu="*res://Game/Scenes/UI/PauseMenu.tscn"
 
 [dotnet]
