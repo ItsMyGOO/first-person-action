@@ -34,6 +34,10 @@ public partial class Player : CharacterBody3D, IAbilityContext, ICombatTarget
 
     private readonly InputCommandBuffer _buffer = new();
     private readonly List<Ability> _abilities = new();
+
+    /// <summary>技能槽只读视图（SkillBar 轮询用）：下标 0..N-1 对应 skill_1..N。</summary>
+    public IReadOnlyList<Ability> Abilities => _abilities;
+
     private readonly List<ICombatTarget> _targetBuffer = new(); // 主动帧窗口目标复用（免每帧分配）
     private readonly List<ICombatTarget> _hitBuffer = new();
     private readonly List<EnemyAI> _executionBuffer = new(); // 处决候选复用
