@@ -1,7 +1,8 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://Game/UI/Hud.cs" id="1_hud"]
 [ext_resource type="Script" path="res://Game/UI/SpeedLines.cs" id="2_speedlines"]
+[ext_resource type="Script" path="res://Game/UI/SkillBar.cs" id="3_skillbar"]
 
 [node name="Hud" type="CanvasLayer"]
 script = ExtResource("1_hud")
@@ -64,3 +65,24 @@ offset_bottom = 96.0
 mouse_filter = 2
 text = "E 处决"
 horizontal_alignment = 1
+
+[node name="SkillBar" type="Control" parent="."]
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -141.0
+offset_top = -116.0
+offset_right = 141.0
+offset_bottom = -36.0
+mouse_filter = 2
+script = ExtResource("3_skillbar")
+
+[node name="Row" type="HBoxContainer" parent="SkillBar"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+alignment = 1
+theme_override_constants/separation = 10
