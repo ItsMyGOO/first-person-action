@@ -97,6 +97,7 @@ public partial class CombatSmokeTestRunner : Node
             ("改键", KeybindPhase),
             ("键位设置UI", KeybindUiPhase),
             ("音效管线", SfxPhase),
+            ("技能栏", SkillBarPhase),
             ("远程敌人", RangedEnemyPhase),
             ("编组激活", EnemyGroupPhase),
             ("手感事件", FeelPhase),
@@ -405,6 +406,53 @@ public partial class CombatSmokeTestRunner : Node
         Check(sfx.LastPlayed == "hit_melee", $"近战命中播打击音（LastPlayed={sfx.LastPlayed}）");
 
         await EndPhase(main);
+    }
+
+    /// <summary>技能栏（M8，龙之谷式）：槽数随角色数据驱动；施放→冷却比例/秒数/遮罩；
+    /// 冷却结束回就绪；重绑后键位标签跟随。</summary>
+    private async Task SkillBarPhase()
+    {
+        // 战士：3 槽 + 施放跳劈（CD 9s）进入冷却
+        (Node main, Player warrior) = await StartPhase("res://Game/Config/Characters/Warrior.tres");
+        var bar = main.GetNode<UI.SkillBar>("Hud/SkillBar");
+        Check(bar.SlotCount == 3, "战士技能栏 3 槽（数据驱动）");
+        Check(bar.GetKeyLabel(0) == "1", "槽位键位标签显示默认数字键 1");
+
+        warrior.Rotation = Vector3.Zero;
+        PressRelease("skill_1"); // 跳劈 CD 9s
+        await Frames(5);
+        Check(bar.IsCooling(0), "施放后槽位进入冷却（遮罩显示）");
+        Check(bar.GetSecondsText(0) != "", $"冷却秒数显示（{bar.GetSecondsText(0)}s）");
+        await Frames(60); // 累计 ~1.1s：9s CD 剩 ~7.9s → 比例 ~0.88
+        Check(
+            bar.GetCooldown01ForSmoke(0) > 0.5f && bar.GetCooldown01ForSmoke(0) < 1f,
+            "冷却比例递减中"
+        );
+
+        // 重绑联动：skill_1 → F
+        Core.KeybindManager.Instance!.Rebind("skill_1", Key.F);
+        await Frames(3);
+        Check(bar.GetKeyLabel(0) == "F", "重绑后键位标签跟随为 F");
+        Core.KeybindManager.Instance!.ResetToDefaults();
+        await EndPhase(main);
+
+        // 刺客：2 槽 + 疾行（CD 4s）全程冷却恢复
+        (Node main2, Player assassin) = await StartPhase(
+            "res://Game/Config/Characters/Assassin.tres"
+        );
+        var bar2 = main2.GetNode<UI.SkillBar>("Hud/SkillBar");
+        Check(bar2.SlotCount == 2, "刺客技能栏 2 槽");
+        assassin.Rotation = Vector3.Zero;
+        PressRelease("skill_1"); // 疾行 CD 4s
+        await Frames(5);
+        Check(bar2.IsCooling(0), "疾行施放进入冷却");
+        await Frames(280); // 4.67s > 4s CD
+        Check(
+            !bar2.IsCooling(0) && bar2.GetSecondsText(0) == "",
+            "冷却结束回到就绪（遮罩/秒数隐藏）"
+        );
+
+        await EndPhase(main2);
     }
 
     /// <summary>远程敌人（M4）：9m 距离带内驻停瞄准（0.7s 红线预告）→ 射箭，

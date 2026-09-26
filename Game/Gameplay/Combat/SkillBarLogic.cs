@@ -11,13 +11,26 @@ public static class SkillBarLogic
     /// <summary>冷却剩余秒数文本：≤0 空串（就绪）；≥10s 向上取整为整数；否则一位小数。
     /// InvariantCulture：CI/Linux 上不产生逗号小数点。</summary>
     public static string FormatSeconds(float remaining) =>
-        remaining <= 0f
-            ? ""
-            : remaining < 10f
-                ? remaining.ToString("F1", CultureInfo.InvariantCulture)
-                : Mathf.Ceil(remaining).ToString(CultureInfo.InvariantCulture);
+        remaining <= 0f ? ""
+        : remaining < 10f ? remaining.ToString("F1", CultureInfo.InvariantCulture)
+        : Mathf.Ceil(remaining).ToString(CultureInfo.InvariantCulture);
 
     /// <summary>冷却进度 0（就绪）~1（刚施放）；total≤0 视为无 CD 恒就绪。</summary>
     public static float Cooldown01(float remaining, float total) =>
         total <= 0f ? 0f : Mathf.Clamp(remaining / total, 0f, 1f);
+
+    /// <summary>键位标签文本：数字键 Key1..Key0 显示为 1..0（龙之谷式数字键约定），
+    /// 其余键显示枚举名（F/Shift 等）；无绑定为 "-"。</summary>
+    public static string FormatKey(Key? key)
+    {
+        if (key == null)
+        {
+            return "-";
+        }
+
+        string text = key.Value.ToString();
+        return text.Length == 4 && text.StartsWith("Key") && char.IsAsciiDigit(text[3])
+            ? text[3..]
+            : text;
+    }
 }

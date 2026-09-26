@@ -1,4 +1,5 @@
 using FirstPersonAction.Combat;
+using Godot;
 using Xunit;
 
 namespace FirstPersonAction.Tests;
@@ -24,5 +25,23 @@ public class SkillBarLogicTests
         Assert.Equal(0.5f, SkillBarLogic.Cooldown01(3f, 6f));
         Assert.Equal(1f, SkillBarLogic.Cooldown01(9f, 6f)); // 上界钳制
         Assert.Equal(0f, SkillBarLogic.Cooldown01(-1f, 6f)); // 下界钳制
+    }
+
+    [Theory]
+    [InlineData("1", "1")] // 数字键显示纯数字（龙之谷式）
+    [InlineData("Key1", "1")]
+    [InlineData("Key9", "9")]
+    [InlineData("Key0", "0")]
+    [InlineData("F", "F")] // 字母键原样
+    [InlineData("Shift", "Shift")]
+    public void FormatKey_DisplaysDigitKeysAsDigits(string keyName, string expected)
+    {
+        Assert.Equal(expected, SkillBarLogic.FormatKey(System.Enum.Parse<Key>(keyName)));
+    }
+
+    [Fact]
+    public void FormatKey_NullBinding_ShowsDash()
+    {
+        Assert.Equal("-", SkillBarLogic.FormatKey(null));
     }
 }

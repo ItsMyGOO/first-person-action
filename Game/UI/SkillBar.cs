@@ -106,13 +106,10 @@ public partial class SkillBar : Control
         glyph.AddThemeColorOverride("font_color", new Color(0.1f, 0.1f, 0.12f));
         panel.AddChild(glyph);
 
-        var maskMaterial =
-            new ShaderMaterial
-            {
-                Shader = ResourceLoader.Load<Shader>(
-                    "res://Game/UI/Shaders/cooldown_mask.gdshader"
-                )!,
-            };
+        var maskMaterial = new ShaderMaterial
+        {
+            Shader = ResourceLoader.Load<Shader>("res://Game/UI/Shaders/cooldown_mask.gdshader")!,
+        };
         var mask = new ColorRect
         {
             MouseFilter = MouseFilterEnum.Ignore,
@@ -163,8 +160,9 @@ public partial class SkillBar : Control
     private void UpdateSlot(int index, Ability ability)
     {
         Slot slot = _slots[index];
-        Key? current = KeybindManager.Instance?.CurrentKey(slot.ActionName);
-        slot.Key.Text = current?.ToString() ?? "-";
+        slot.Key.Text = SkillBarLogic.FormatKey(
+            KeybindManager.Instance?.CurrentKey(slot.ActionName)
+        );
 
         float cd01 = SkillBarLogic.Cooldown01(ability.CooldownRemaining, ability.Def.Cooldown);
         _cooldown01Cache[index] = cd01;
