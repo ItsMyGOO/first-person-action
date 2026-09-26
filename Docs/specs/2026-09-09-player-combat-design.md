@@ -107,6 +107,8 @@ Presentation（AnimationTree 跟随、镜头、VFX、音效 —— 只读状态�
 
 | M7 刺客 | （2026-09-25 完成）刺客原型：Assassin.tres（100HP/5.6 移速/疾行+后跳，选人界面自动出现——数据驱动闭环）+ DashThroughAbility 疾行（7m/0.30s，IAbilityContext.SetSpatialExempt 空间豁免穿人，对照冲锋的推挤/挡停；打断/收尾路径统一清豁免）+ IsDashing 冲刺表现泛化（冲锋/疾行共享 FOV 拉伸+抖动+速度线） | 穿人冲刺 7m 未被挡停、路径单位位移 <0.3m（穿而不推）；疾行速度线 >0.5；后跳 2.5m；刺客普攻复用连段命中；单测 88 + 冒烟 90 全过 |
 
+| M8 技能栏 | （2026-09-26 完成计划 2026-09-26-m8-skillbar-hud）龙之谷式底部居中技能栏（计划 2026-09-26-m8-skillbar-hud）：槽数随角色 SkillIds 数据驱动（战士3/刺客2/弓手1，换角色自动重建）；占位图标=技能色块+显示名首字（KindColors，真资产换 TextureRect）；冷却=径向遮罩 shader（cooldown_mask，progress 1→0 顺时针收缩）+ 秒数（≥10s 整数/<10s 一位小数，InvariantCulture）；键位标签跟随 KeybindManager 实际绑定（数字键显示纯数字，FormatKey 纯逻辑）；SkillBarLogic 纯逻辑 TDD | 默认标签 1/2/3；施放即显示冷却、比例递减、4s CD 全程恢复回就绪；重绑 skill_1→F 标签跟随；换角色槽数变化（3/2 冒烟覆盖）；单测 102 + 冒烟 104 全过 |
+
 弓手瞄准状态排在 M5 之后或替换刺客（若优先验证镜头状态机）。阵型系统 MVP 已于 2026-09-10 接入完成（复用 SpatialAgent 与受击状态）。
 
 ## 8. 目录结构与测试
